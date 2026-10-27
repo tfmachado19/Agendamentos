@@ -33,6 +33,10 @@
   table.list { width:100%; border-collapse:collapse; font-size:14px; }
   .list th, .list td { text-align:left; padding:6px; border-bottom:1px solid var(--line); }
   .free { display:inline-block; background:#dcfce7; color:#166534; border-radius:12px; padding:2px 8px; margin:2px; font-size:12px; }
+  .grid td.indisp { background:repeating-linear-gradient(45deg,#f1f2f4,#f1f2f4 4px,#e5e7eb 4px,#e5e7eb 8px); }
+  .dia-disp { border-bottom:1px solid var(--line); padding:8px 0; }
+  .dia-disp b { display:inline-block; width:80px; }
+  .faixa { display:inline-block; background:#eef2f7; border-radius:12px; padding:2px 8px; margin:2px; font-size:13px; }
   .hidden { display:none; }
   .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
   ul { padding-left:18px; }
@@ -44,6 +48,7 @@
   <nav>
     <button data-tab="agenda" class="active">Agenda do dia</button>
     <button data-tab="novo">Novo agendamento</button>
+    <button data-tab="disp">Disponibilidade</button>
     <button data-tab="cadastros">Cadastros</button>
   </nav>
 </header>
@@ -69,7 +74,7 @@
     <div class="card">
       <div class="row">
         <label>Data <input type="date" id="f-data"></label>
-        <label>Início <input type="time" id="f-inicio" step="1800" value="14:00"></label>
+        <label>Início <select id="f-inicio"></select></label>
         <label>Duração
           <select id="f-dur"></select>
         </label>
@@ -81,6 +86,16 @@
       <div class="msg" id="msg"></div>
       <p style="font-size:14px">Salas livres neste horário: <span id="livres"></span></p>
       <p style="font-size:14px">Professores livres neste horário: <span id="profsLivres"></span></p>
+    </div>
+  </section>
+
+  <!-- DISPONIBILIDADE -->
+  <section id="tab-disp" class="hidden">
+    <div class="card">
+      <p style="margin-top:0;font-size:14px;color:var(--muted)">Cada professor marca os horários em que pode dar aula.
+        Só é possível agendar dentro desses horários.</p>
+      <label style="max-width:260px">Professor <select id="d-prof"></select></label>
+      <div id="d-dias"></div>
     </div>
   </section>
 
@@ -97,28 +112,41 @@
 <script>
 // ---------- Dados ----------
 const hoje = new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso local
+function f(inicio, fim) { return { inicio, fim }; }
 const exemplo = {
-  professores: [{id:1,nome:"Ana (Matemática)"},{id:2,nome:"Bruno (Inglês)"},{id:3,nome:"Carla (Piano)"}],
+  // disp: horários disponíveis por dia da semana (0 = domingo … 6 = sábado)
+  professores: [
+    {id:1,nome:"Ana (Matemática)",disp:{1:[f("13:00","18:00")],3:[f("13:00","18:00")],5:[f("13:00","18:00")]}},
+    {id:2,nome:"Bruno (Inglês)",disp:{1:[f("14:00","16:00"),f("19:00","22:00")],2:[f("19:00","22:00")],4:[f("19:00","22:00")]}},
+    {id:3,nome:"Carla (Piano)",disp:{2:[f("13:00","22:00")],3:[f("13:00","22:00")],4:[f("13:00","22:00")]}},
+  ],
   salas: [{id:1,nome:"Sala 1"},{id:2,nome:"Sala 2"},{id:3,nome:"Sala 3"}],
   alunos: [{id:1,nome:"João"},{id:2,nome:"Maria"},{id:3,nome:"Pedro"},{id:4,nome:"Luiza"}],
   aulas: [
-    {id:1,data:hoje,inicio:"09:00",fim:"10:00",aluno:1,professor:1,sala:1},
-    {id:2,data:hoje,inicio:"09:00",fim:"10:00",aluno:2,professor:2,sala:2},
-    {id:3,data:hoje,inicio:"14:00",fim:"15:30",aluno:3,professor:3,sala:3},
+    {id:1,data:hoje,inicio:"14:00",fim:"15:30",aluno:3,professor:3,sala:3},
+    {id:2,data:hoje,inicio:"19:00",fim:"20:00",aluno:2,professor:2,sala:1},
   ],
 };
+const CHAVE = "agenda-db-v2";
 let db;
-try { db = JSON.parse(localStorage.getItem("agenda-db")) || exemplo; } catch { db = exemplo; }
-const salvarDb = () => { try { localStorage.setItem("agenda-db", JSON.stringify(db)); } catch {} };
+try { db = JSON.parse(localStorage.getItem(CHAVE)) || exemplo; } catch { db = exemplo; }
+const salvarDb = () => { try { localStorage.setItem(CHAVE, JSON.stringify(db)); } catch {} };
 const novoId = lista => Math.max(0, ...lista.map(x => x.id)) + 1;
 const nome = (lista, id) => (db[lista].find(x => x.id === id) || {nome:"?"}).nome;
 
 // ---------- Horários ----------
 const min = h => { const [a, b] = h.split(":").map(Number); return a * 60 + b; };
 const hhmm = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
-const ABRE = 7 * 60, FECHA = 22 * 60, PASSO = 30;
+const ABRE = 13 * 60, FECHA = 22 * 60, PASSO = 30; // só tarde e noite
 const DURACAO_MINIMA = 60, DURACAO_MAXIMA = 240; // mínimo 1h, depois de 30 em 30 min
 const SALA_AUTO = 0; // "qualquer sala livre"
+const DIAS = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+const diaSemana = data => new Date(data + "T12:00").getDay();
+const horarios = (de, ate) => { const l = []; for (let t = de; t <= ate; t += PASSO) l.push(hhmm(t)); return l; };
+const faixasDoDia = (profId, data) => ((db.professores.find(p => p.id === profId) || {}).disp || {})[diaSemana(data)] || [];
+// O professor está disponível se o horário inteiro cabe numa das faixas dele naquele dia
+const disponivel = (profId, data, inicio, fim) =>
+  faixasDoDia(profId, data).some(r => min(r.inicio) <= min(inicio) && min(fim) <= min(r.fim));
 // Dois horários se sobrepõem se um começa antes do outro terminar
 const sobrepoe = (a, b) => min(a.inicio) < min(b.fim) && min(b.inicio) < min(a.fim);
 
@@ -163,7 +191,10 @@ function renderAgenda() {
         for (let k = 1; k < span; k++) ocupado[c.id + "-" + (t + k * PASSO)] = true;
         const extra = visao === "sala" ? nome("professores", aula.professor) : nome("salas", aula.sala);
         html += `<td class="slot" rowspan="${span}"><div class="block"><b>${nome("alunos", aula.aluno)}</b>${extra}<br>${aula.inicio}–${aula.fim}</div></td>`;
-      } else html += `<td class="slot"></td>`;
+      } else {
+        const indisp = visao === "professor" && !disponivel(c.id, dia, hhmm(t), hhmm(t + PASSO));
+        html += `<td class="slot${indisp ? " indisp" : ""}"></td>`;
+      }
     });
     html += "</tr>";
   }
@@ -202,9 +233,12 @@ function renderLivres() {
   const livre = (lista, campo) => db[lista].filter(x => !doHorario.some(a => a[campo] === x.id))
     .map(x => `<span class="free">${x.nome}</span>`).join("") || "<em>nenhum(a)</em>";
   $("livres").innerHTML = livre("salas", "sala");
-  $("profsLivres").innerHTML = livre("professores", "professor");
+  $("profsLivres").innerHTML = db.professores
+    .filter(p => disponivel(p.id, f.data, f.inicio, f.fim) && !doHorario.some(a => a.professor === p.id))
+    .map(p => `<span class="free">${p.nome}</span>`).join("") || "<em>nenhum</em>";
 }
 ["f-data", "f-inicio", "f-dur"].forEach(id => $(id).onchange = renderLivres);
+$("f-inicio").innerHTML = horarios(ABRE, FECHA - DURACAO_MINIMA).map(h => `<option${h === "14:00" ? " selected" : ""}>${h}</option>`).join("");
 
 $("salvar").onclick = () => {
   const f = lerForm(), msg = $("msg");
@@ -216,7 +250,11 @@ $("salvar").onclick = () => {
     if (!livre) { msg.className = "msg err"; msg.textContent = "⚠️ Nenhuma sala livre neste horário."; return; }
     f.sala = livre.id;
   }
-  if (min(f.fim) > FECHA) { msg.className = "msg err"; msg.textContent = "A aula termina depois do horário de funcionamento."; return; }
+  if (min(f.inicio) < ABRE || min(f.fim) > FECHA) { msg.className = "msg err"; msg.textContent = `A aula precisa estar entre ${hhmm(ABRE)} e ${hhmm(FECHA)}.`; return; }
+  if (!disponivel(f.professor, f.data, f.inicio, f.fim)) {
+    const faixas = faixasDoDia(f.professor, f.data).map(r => `${r.inicio}–${r.fim}`).join(", ") || "nenhum horário";
+    msg.className = "msg err"; msg.textContent = `⚠️ ${nome("professores", f.professor)} não está disponível nesse horário. Disponível na ${DIAS[diaSemana(f.data)].toLowerCase()}: ${faixas}.`; return;
+  }
   const erros = conflitos(f);
   if (erros.length) { msg.className = "msg err"; msg.innerHTML = "⚠️ Não foi possível agendar:<br>" + erros.join("<br>"); return; }
   db.aulas.push({ id: novoId(db.aulas), ...f }); salvarDb();
@@ -234,7 +272,7 @@ function renderCadastros() {
     card.querySelector("button.primary").onclick = () => {
       const inp = card.querySelector("input"), n = inp.value.trim();
       if (!n) return;
-      db[ent].push({ id: novoId(db[ent]), nome: n }); salvarDb(); renderTudo();
+      db[ent].push({ id: novoId(db[ent]), nome: n, ...(ent === "professores" ? { disp: {} } : {}) }); salvarDb(); renderTudo();
     };
     card.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
       const id = Number(b.dataset.del), campo = {professores:"professor", salas:"sala", alunos:"aluno"}[ent];
@@ -244,11 +282,46 @@ function renderCadastros() {
   });
 }
 
+// ---------- Disponibilidade ----------
+$("d-prof").onchange = () => renderDisp();
+function renderDisp() {
+  const prof = db.professores.find(p => p.id === Number($("d-prof").value));
+  if (!prof) { $("d-dias").innerHTML = "<p>Cadastre um professor primeiro.</p>"; return; }
+  prof.disp = prof.disp || {};
+  const opts = (sel, de, ate) => horarios(de, ate).map(h => `<option${h === sel ? " selected" : ""}>${h}</option>`).join("");
+  $("d-dias").innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `
+    <div class="dia-disp" data-dia="${d}">
+      <b>${DIAS[d]}</b>
+      ${(prof.disp[d] || []).map((r, i) => `<span class="faixa">${r.inicio}–${r.fim} <button class="link" data-rm="${i}">✕</button></span>`).join("") || '<span style="color:var(--muted);font-size:13px">indisponível</span>'}
+      <div class="row" style="margin-top:4px">
+        <select class="de">${opts("13:00", ABRE, FECHA - DURACAO_MINIMA)}</select> até
+        <select class="ate">${opts("18:00", ABRE + DURACAO_MINIMA, FECHA)}</select>
+        <button class="primary add">+ adicionar</button>
+      </div>
+    </div>`).join("");
+  document.querySelectorAll(".dia-disp").forEach(div => {
+    const d = div.dataset.dia;
+    div.querySelector(".add").onclick = () => {
+      const nova = f(div.querySelector(".de").value, div.querySelector(".ate").value);
+      if (min(nova.fim) - min(nova.inicio) < DURACAO_MINIMA) return alert("O período precisa ter pelo menos 1h.");
+      const lista = prof.disp[d] || [];
+      if (lista.some(r => sobrepoe(r, nova))) return alert("Esse período se sobrepõe a outro já cadastrado.");
+      prof.disp[d] = [...lista, nova].sort((a, b) => min(a.inicio) - min(b.inicio)); salvarDb(); renderDisp();
+    };
+    div.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => {
+      prof.disp[d].splice(Number(b.dataset.rm), 1); salvarDb(); renderDisp();
+    });
+  });
+}
+
 function renderTudo() {
   $("f-aluno").innerHTML = opcoes("alunos");
   $("f-prof").innerHTML = opcoes("professores");
   $("f-sala").innerHTML = `<option value="${SALA_AUTO}">Qualquer sala livre</option>` + opcoes("salas");
-  renderAgenda(); renderLivres(); renderCadastros();
+  const profSel = $("d-prof").value;
+  $("d-prof").innerHTML = opcoes("professores");
+  if (db.professores.some(p => String(p.id) === profSel)) $("d-prof").value = profSel;
+  renderAgenda(); renderLivres(); renderCadastros(); renderDisp();
 }
 renderTudo();
 </script>

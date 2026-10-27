@@ -14,7 +14,8 @@ fiquem com dois horários ao mesmo tempo**.
 
 | Entidade      | Campos principais                                                      |
 |---------------|------------------------------------------------------------------------|
-| **Professor** | id, nome, disciplinas, telefone, disponibilidade (dias/horários)       |
+| **Professor** | id, nome, disciplinas, telefone                                        |
+| **Disponibilidade** | professor, dia da semana, hora início, hora fim (o próprio professor cadastra; pode ter mais de um período por dia) |
 | **Sala**      | id, nome                                                               |
 | **Aluno**     | id, nome, responsável, telefone, observações                           |
 | **Aula**      | id, data, hora início, hora fim, aluno, professor, sala, disciplina, status (agendada / realizada / cancelada / falta) |
@@ -37,8 +38,10 @@ Professor 1 ──< Aula >── 1 Aluno
    **Aulas individuais**: um aluno por aula (não há aulas em grupo).
    **Qualquer sala serve** (não há sala específica): o sistema pode escolher sozinho uma sala livre.
 6. Aulas canceladas liberam professor e sala.
-7. Ao escolher data/horário, o sistema **sugere só as salas e professores livres**.
-8. (Futuro) Respeitar a disponibilidade cadastrada do professor.
+7. **Funcionamento só à tarde e à noite: 13h às 22h.**
+8. **Disponibilidade do professor**: cada professor informa os dias e horários em que pode dar aula
+   (ex.: segunda 13h–18h; terça 14h–16h e 19h–22h). Só é possível agendar dentro desses horários.
+9. Ao escolher data/horário, o sistema **sugere só as salas e professores livres**.
 
 ## 4. Telas
 
@@ -47,7 +50,8 @@ Professor 1 ──< Aula >── 1 Aluno
 2. **Novo agendamento** — data, horário, duração, aluno, professor, sala;
    avisa conflitos antes de salvar.
 3. **Lista do dia** — lista em ordem de horário (boa para imprimir / recepção).
-4. **Cadastros** — professores, salas e alunos.
+4. **Disponibilidade** — o professor marca seus dias e horários livres.
+5. **Cadastros** — professores, salas e alunos.
 
 ## 5. Protótipo
 
@@ -56,7 +60,8 @@ basta abrir no navegador. Os dados ficam salvos no próprio navegador
 (localStorage) e vêm alguns exemplos pré-carregados.
 
 Já implementado no protótipo:
-- Agenda do dia por **sala** ou por **professor**
+- Agenda do dia por **sala** ou por **professor** (horários indisponíveis do professor aparecem hachurados)
+- Tela de disponibilidade por professor e bloqueio de agendamento fora dela
 - Cadastro de aulas com verificação de conflito (professor, sala e aluno)
 - Lista de salas livres no horário escolhido e opção "Qualquer sala livre"
 - Lista do dia e cancelamento de aulas
@@ -75,7 +80,8 @@ Já implementado no protótipo:
 ## 7. Perguntas em aberto
 
 - ~~Duração das aulas~~ → definido: mínimo de 1h, de 30 em 30 min.
-- Horário de funcionamento (o protótipo usa 07h–22h).
+- ~~Horário de funcionamento~~ → definido: tarde e noite (13h–22h).
 - ~~Sala específica~~ → definido: qualquer sala serve.
 - ~~Aulas em grupo~~ → definido: só aulas individuais.
-- Quem vai usar: só a recepção, ou professores também?
+- ~~Quem usa~~ → recepção agenda; professores cadastram a própria disponibilidade
+  (no sistema real, cada professor terá login próprio e só edita a sua).
