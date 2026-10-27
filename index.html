@@ -38,6 +38,8 @@
   .dia-disp b { display:inline-block; width:80px; }
   .faixa { display:inline-block; background:#eef2f7; border-radius:12px; padding:2px 8px; margin:2px; font-size:13px; }
   .hidden { display:none; }
+  body.modo-professor .so-recepcao, body:not(.modo-professor) .so-professor { display:none !important; }
+  .link-prof { font-size:12px; word-break:break-all; color:var(--muted); }
   .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
   ul { padding-left:18px; }
 </style>
@@ -47,9 +49,9 @@
   <h1>📅 Agenda de Aulas Particulares</h1>
   <nav>
     <button data-tab="agenda" class="active">Agenda do dia</button>
-    <button data-tab="novo">Novo agendamento</button>
+    <button data-tab="novo" class="so-recepcao">Novo agendamento</button>
     <button data-tab="disp">Disponibilidade</button>
-    <button data-tab="cadastros">Cadastros</button>
+    <button data-tab="cadastros" class="so-recepcao">Cadastros</button>
   </nav>
 </header>
 
@@ -58,14 +60,18 @@
   <section id="tab-agenda">
     <div class="card row">
       <label>Dia <input type="date" id="dia"></label>
-      <label>Ver por
+      <label class="so-recepcao">Ver por
         <select id="visao"><option value="sala">Sala</option><option value="professor">Professor</option></select>
       </label>
     </div>
-    <div class="card grid-wrap"><table class="grid" id="grade"></table></div>
+    <div class="card grid-wrap so-recepcao"><table class="grid" id="grade"></table></div>
     <div class="card">
-      <h3 style="margin-top:0">Lista do dia</h3>
+      <h3 style="margin-top:0" id="titulo-lista">Lista do dia</h3>
       <table class="list" id="lista"></table>
+    </div>
+    <div class="card so-professor">
+      <h3 style="margin-top:0">Próximas aulas</h3>
+      <table class="list" id="proximas"></table>
     </div>
   </section>
 
@@ -94,7 +100,7 @@
     <div class="card">
       <p style="margin-top:0;font-size:14px;color:var(--muted)">Cada professor marca os horários em que pode dar aula.
         Só é possível agendar dentro desses horários.</p>
-      <label style="max-width:260px">Professor <select id="d-prof"></select></label>
+      <label style="max-width:260px" class="so-recepcao">Professor <select id="d-prof"></select></label>
       <div id="d-dias"></div>
     </div>
   </section>
@@ -133,6 +139,11 @@ try { db = JSON.parse(localStorage.getItem(CHAVE)) || exemplo; } catch { db = ex
 const salvarDb = () => { try { localStorage.setItem(CHAVE, JSON.stringify(db)); } catch {} };
 const novoId = lista => Math.max(0, ...lista.map(x => x.id)) + 1;
 const nome = (lista, id) => (db[lista].find(x => x.id === id) || {nome:"?"}).nome;
+
+// ---------- Modo professor (link ?professor=ID) ----------
+// Professor só vê as próprias aulas e alunos, e edita a própria disponibilidade.
+const PROF_LOGADO = db.professores.find(p => p.id === Number(new URLSearchParams(location.search).get("professor"))) || null;
+const linkProfessor = id => location.origin + location.pathname + "?professor=" + id;
 
 // ---------- Horários ----------
 const min = h => { const [a, b] = h.split(":").map(Number); return a * 60 + b; };
@@ -176,7 +187,8 @@ $("dia").onchange = $("visao").onchange = () => renderAgenda();
 function renderAgenda() {
   const dia = $("dia").value, visao = $("visao").value;
   const colunas = visao === "sala" ? db.salas : db.professores;
-  const aulas = db.aulas.filter(a => a.data === dia).sort((a, b) => min(a.inicio) - min(b.inicio));
+  const aulas = db.aulas.filter(a => a.data === dia && (!PROF_LOGADO || a.professor === PROF_LOGADO.id))
+    .sort((a, b) => min(a.inicio) - min(b.inicio));
 
   let html = "<tr><th></th>" + colunas.map(c => `<th>${c.nome}</th>`).join("") + "</tr>";
   const ocupado = {}; // células cobertas por rowspan
@@ -200,10 +212,16 @@ function renderAgenda() {
   }
   $("grade").innerHTML = html;
 
-  $("lista").innerHTML = aulas.length
-    ? "<tr><th>Horário</th><th>Aluno</th><th>Professor</th><th>Sala</th><th></th></tr>" +
-      aulas.map(a => `<tr><td>${a.inicio}–${a.fim}</td><td>${nome("alunos", a.aluno)}</td><td>${nome("professores", a.professor)}</td><td>${nome("salas", a.sala)}</td><td><button class="link" data-cancelar="${a.id}">cancelar</button></td></tr>`).join("")
-    : "<tr><td>Nenhuma aula neste dia.</td></tr>";
+  const linha = (a, comData) => `<tr>${comData ? `<td>${a.data.split("-").reverse().join("/")}</td>` : ""}<td>${a.inicio}–${a.fim}</td><td>${nome("alunos", a.aluno)}</td>` +
+    (PROF_LOGADO ? "" : `<td>${nome("professores", a.professor)}</td>`) + `<td>${nome("salas", a.sala)}</td>` +
+    (PROF_LOGADO ? "" : `<td><button class="link" data-cancelar="${a.id}">cancelar</button></td>`) + "</tr>";
+  const cab = comData => "<tr>" + (comData ? "<th>Data</th>" : "") + "<th>Horário</th><th>Aluno</th>" + (PROF_LOGADO ? "" : "<th>Professor</th>") + "<th>Sala</th>" + (PROF_LOGADO ? "" : "<th></th>") + "</tr>";
+  $("lista").innerHTML = aulas.length ? cab(false) + aulas.map(a => linha(a, false)).join("") : "<tr><td>Nenhuma aula neste dia.</td></tr>";
+  if (PROF_LOGADO) {
+    const prox = db.aulas.filter(a => a.professor === PROF_LOGADO.id && a.data >= hoje)
+      .sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio));
+    $("proximas").innerHTML = prox.length ? cab(true) + prox.map(a => linha(a, true)).join("") : "<tr><td>Nenhuma aula agendada.</td></tr>";
+  }
   document.querySelectorAll("[data-cancelar]").forEach(b => b.onclick = () => {
     if (!confirm("Cancelar esta aula?")) return;
     db.aulas = db.aulas.filter(a => a.id !== Number(b.dataset.cancelar)); salvarDb(); renderAgenda();
@@ -267,7 +285,8 @@ function renderCadastros() {
   document.querySelectorAll("[data-entidade]").forEach(card => {
     const ent = card.dataset.entidade;
     card.innerHTML = `<h3>${card.querySelector("h3").textContent}</h3>
-      <ul>${db[ent].map(x => `<li>${x.nome} <button class="link" data-del="${x.id}">remover</button></li>`).join("")}</ul>
+      <ul>${db[ent].map(x => `<li>${x.nome} <button class="link" data-del="${x.id}">remover</button>` +
+        (ent === "professores" ? `<br><span class="link-prof">Link do professor: <a href="${linkProfessor(x.id)}">${linkProfessor(x.id)}</a></span>` : "") + "</li>").join("")}</ul>
       <div class="row"><input placeholder="Nome"><button class="primary">Adicionar</button></div>`;
     card.querySelector("button.primary").onclick = () => {
       const inp = card.querySelector("input"), n = inp.value.trim();
@@ -323,7 +342,15 @@ function renderTudo() {
   if (db.professores.some(p => String(p.id) === profSel)) $("d-prof").value = profSel;
   renderAgenda(); renderLivres(); renderCadastros(); renderDisp();
 }
+if (PROF_LOGADO) {
+  document.body.classList.add("modo-professor");
+  document.querySelector("header h1").textContent = "📅 Olá, " + PROF_LOGADO.nome;
+  document.querySelector('[data-tab="agenda"]').textContent = "Minhas aulas";
+  document.querySelector('[data-tab="disp"]').textContent = "Minha disponibilidade";
+  $("titulo-lista").textContent = "Aulas do dia";
+}
 renderTudo();
+if (PROF_LOGADO) { $("d-prof").value = PROF_LOGADO.id; renderDisp(); }
 </script>
 </body>
 </html>

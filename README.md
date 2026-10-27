@@ -53,15 +53,32 @@ Professor 1 ──< Aula >── 1 Aluno
 4. **Disponibilidade** — o professor marca seus dias e horários livres.
 5. **Cadastros** — professores, salas e alunos.
 
+### Quem vê o quê
+
+| Perfil | Pode |
+|--------|------|
+| **Recepção** | Tudo: agenda completa, agendar/cancelar aulas, cadastros |
+| **Professor** | Só **as próprias aulas e os alunos agendados com ele**, e editar a **própria disponibilidade**. Não agenda, não cancela e não vê outros professores |
+
 ## 5. Protótipo
 
 O arquivo [`index.html`](index.html) é um protótipo funcional, sem instalação:
 basta abrir no navegador. Os dados ficam salvos no próprio navegador
 (localStorage) e vêm alguns exemplos pré-carregados.
 
+**Exemplo online (GitHub Pages):** https://tfmachado19.github.io/Agendamentos/
+- Recepção: abre o link normal.
+- Professor: abre o link com `?professor=ID`, ex.: https://tfmachado19.github.io/Agendamentos/?professor=1
+  (o link de cada professor aparece na aba Cadastros).
+
+> ⚠️ É só um exemplo: os dados ficam no navegador de cada pessoa, então o professor
+> **não** vê as aulas que a recepção marcou em outro computador. Isso só funciona
+> no sistema real (fase 2), com banco de dados e login.
+
 Já implementado no protótipo:
 - Agenda do dia por **sala** ou por **professor** (horários indisponíveis do professor aparecem hachurados)
 - Tela de disponibilidade por professor e bloqueio de agendamento fora dela
+- Modo professor (link próprio): vê só as aulas e alunos dele e edita a própria disponibilidade
 - Cadastro de aulas com verificação de conflito (professor, sala e aluno)
 - Lista de salas livres no horário escolhido e opção "Qualquer sala livre"
 - Lista do dia e cancelamento de aulas
