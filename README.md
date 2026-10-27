@@ -14,17 +14,21 @@ fiquem com dois horários ao mesmo tempo**.
 
 | Entidade      | Campos principais                                                      |
 |---------------|------------------------------------------------------------------------|
-| **Professor** | id, nome, disciplinas, telefone                                        |
+| **Disciplina** | id, nome (ex.: Inglês, Matemática, Piano)                             |
+| **Professor** | id, nome, disciplinas que dá (pode ser mais de uma), login            |
 | **Disponibilidade** | professor, dia da semana, hora início, hora fim (o próprio professor cadastra; pode ter mais de um período por dia) |
 | **Sala**      | id, nome                                                               |
 | **Aluno**     | id, nome, responsável, telefone, observações                           |
 | **Aula**      | id, data, hora início, hora fim, aluno, professor, sala, disciplina, status (agendada / realizada / cancelada / falta) |
 
 ```
-Professor 1 ──< Aula >── 1 Aluno
-                 │
-                 1
-               Sala
+Professor >──< Disciplina
+    1              1
+    │              │
+    └──< Aula >────┘
+          │  │
+          1  1
+      Aluno  Sala
 ```
 
 ## 3. Regras de negócio
@@ -42,16 +46,16 @@ Professor 1 ──< Aula >── 1 Aluno
 8. **Disponibilidade do professor**: cada professor informa os dias e horários em que pode dar aula
    (ex.: segunda 13h–18h; terça 14h–16h e 19h–22h). Só é possível agendar dentro desses horários.
 9. Ao escolher data/horário, o sistema **sugere só as salas e professores livres**.
+10. **Disciplina**: cada aula tem uma disciplina, e o professor precisa dar essa disciplina.
+11. Não é possível agendar em horários que já passaram.
 
 ## 4. Telas
 
-1. **Agenda do dia** — grade com horários nas linhas e salas nas colunas
-   (alternável para ver por professor). Cada bloco mostra aluno + professor.
-2. **Novo agendamento** — data, horário, duração, aluno, professor, sala;
-   avisa conflitos antes de salvar.
-3. **Lista do dia** — lista em ordem de horário (boa para imprimir / recepção).
-4. **Disponibilidade** — o professor marca seus dias e horários livres.
-5. **Cadastros** — professores, salas e alunos.
+1. **Agenda** — semana de domingo a sábado, de 30 em 30 min, **filtrada por disciplina**.
+   Em cada horário aparecem os professores daquela disciplina que estão livres; toque no nome para agendar.
+2. **Disponibilidade** — os dias e horários em que cada professor pode dar aula.
+3. **Cadastros** — professores (com as disciplinas que dão), disciplinas, salas e alunos.
+4. **Modo professor** — Minhas aulas + Minha disponibilidade.
 
 ### Quem vê o quê
 
@@ -77,18 +81,20 @@ As regras são garantidas **pelo próprio banco**, mesmo que alguém tente burla
 - Sem conflito de professor, sala ou aluno no mesmo horário (aulas canceladas não contam)
 - Aulas só entre 13h e 22h, mínimo 1h, de 30 em 30 min
 - Aula só dentro da disponibilidade do professor
+- Professor só dá aula das disciplinas marcadas para ele
 - Professor só vê as próprias aulas e os alunos delas, e só altera a própria disponibilidade
 - Aula cancelada não é apagada (fica o histórico)
 
 ### Telas
 - Login (recepção / professor)
-- **Agenda da semana** (domingo a sábado), de 30 em 30 min, com **cada dia dividido em uma coluna por sala**.
-  Toque num horário vazio de uma sala para agendar ali; toque numa aula para cancelar.
-  Horários sem nenhum professor disponível aparecem hachurados.
-- Novo agendamento com verificação de conflito, salas/professores livres e "Qualquer sala livre"
+- **Agenda por disciplina**: escolha a disciplina, veja em cada meia hora da semana os professores livres
+  e toque no nome para agendar (sala, duração e aluno na janela que abre). Toque numa aula para cancelar.
+  Navegação entre semanas e botão "Hoje".
 - Disponibilidade por professor
-- Cadastros, incluindo **Dar acesso** ao professor pelo e-mail
+- Cadastros: disciplinas, professores (marcando as disciplinas de cada um), salas, alunos e **Dar acesso** ao professor
 - Modo professor: Minhas aulas + Minha disponibilidade
+
+Páginas de estudo de layout (só exemplo): [`layouts.html`](layouts.html) e [`agenda-disciplinas.html`](agenda-disciplinas.html).
 
 ## 6. Próximos passos (roadmap)
 

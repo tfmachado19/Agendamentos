@@ -27,6 +27,18 @@ create table if not exists public.professores (
   user_id uuid unique references auth.users (id) on delete set null  -- login do professor
 );
 
+create table if not exists public.disciplinas (
+  id   bigint generated always as identity primary key,
+  nome text not null unique
+);
+
+-- Quais disciplinas cada professor dá (um professor pode dar várias)
+create table if not exists public.professor_disciplinas (
+  professor_id  bigint not null references public.professores (id) on delete cascade,
+  disciplina_id bigint not null references public.disciplinas (id) on delete cascade,
+  primary key (professor_id, disciplina_id)
+);
+
 create table if not exists public.salas (
   id   bigint generated always as identity primary key,
   nome text not null
@@ -59,6 +71,7 @@ create table if not exists public.aulas (
   aluno_id     bigint not null references public.alunos (id),
   professor_id bigint not null references public.professores (id),
   sala_id      bigint not null references public.salas (id),
+  disciplina_id bigint not null references public.disciplinas (id),
   status       text not null default 'agendada'
                check (status in ('agendada', 'cancelada', 'realizada', 'falta')),
   criado_em    timestamptz not null default now(),
@@ -97,12 +110,18 @@ begin
   ) then
     raise exception 'Professor não está disponível nesse horário.' using errcode = 'P0001';
   end if;
+  if not exists (
+    select 1 from professor_disciplinas pd
+    where pd.professor_id = new.professor_id and pd.disciplina_id = new.disciplina_id
+  ) then
+    raise exception 'Esse professor não dá essa disciplina.' using errcode = 'P0001';
+  end if;
   return new;
 end $$;
 
 drop trigger if exists aulas_disponibilidade on public.aulas;
 create trigger aulas_disponibilidade
-  before insert or update of data, inicio, fim, professor_id, status on public.aulas
+  before insert or update of data, inicio, fim, professor_id, disciplina_id, status on public.aulas
   for each row execute function public.checar_disponibilidade();
 
 -- ---------------------------------------------------------------------
@@ -143,6 +162,8 @@ end $$;
 alter table public.perfis           enable row level security;
 alter table public.professores      enable row level security;
 alter table public.salas            enable row level security;
+alter table public.disciplinas      enable row level security;
+alter table public.professor_disciplinas enable row level security;
 alter table public.alunos           enable row level security;
 alter table public.disponibilidades enable row level security;
 alter table public.aulas            enable row level security;
@@ -165,6 +186,19 @@ drop policy if exists salas_ler on public.salas;
 create policy salas_ler on public.salas for select to authenticated using (true);
 drop policy if exists salas_recepcao on public.salas;
 create policy salas_recepcao on public.salas for all to authenticated
+  using (public.eh_recepcao()) with check (public.eh_recepcao());
+
+drop policy if exists disciplinas_ler on public.disciplinas;
+create policy disciplinas_ler on public.disciplinas for select to authenticated using (true);
+drop policy if exists disciplinas_recepcao on public.disciplinas;
+create policy disciplinas_recepcao on public.disciplinas for all to authenticated
+  using (public.eh_recepcao()) with check (public.eh_recepcao());
+
+drop policy if exists prof_disc_ler on public.professor_disciplinas;
+create policy prof_disc_ler on public.professor_disciplinas for select to authenticated
+  using (public.eh_recepcao() or professor_id = public.meu_professor_id());
+drop policy if exists prof_disc_recepcao on public.professor_disciplinas;
+create policy prof_disc_recepcao on public.professor_disciplinas for all to authenticated
   using (public.eh_recepcao()) with check (public.eh_recepcao());
 
 drop policy if exists alunos_ler on public.alunos;

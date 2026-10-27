@@ -33,7 +33,17 @@ Leva uns 10 minutos e é gratuito. Pode ser feito pelo celular, mas é mais fác
 A chave "anon public" pode ficar pública: quem não fizer login não vê nada,
 e as permissões são garantidas pelo próprio banco.
 
-## 5. Dar acesso aos professores
+## 5. Cadastrar o básico
+Entre no site como recepção → **Cadastros** e cadastre, nesta ordem:
+1. **Disciplinas** (ex.: Inglês, Matemática, Piano)
+2. **Salas**
+3. **Professores**, marcando as disciplinas que cada um dá
+4. **Alunos**
+
+Depois, em **Disponibilidade**, marque os dias e horários de cada professor
+(ou deixe cada professor marcar a própria, depois do passo 6).
+
+## 6. Dar acesso aos professores
 1. Crie o usuário do professor como no passo 3.1–3.2 (e-mail + senha, **Auto Confirm User**).
 2. Entre no site como recepção → **Cadastros** → no professor, digite o e-mail dele
    e clique em **Dar acesso**.
