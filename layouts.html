@@ -1,0 +1,522 @@
+<title>Layouts da Agenda Semanal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: barra de filtro + seletor de opção no topo, layout escolhido abaixo, diálogo de agendamento sobreposto */
+  :root {
+    --bg:#f3f6f7; --surface:#ffffff; --fg:#16222b; --muted:#5b6a76; --line:#dce3e8; --line-strong:#b9c4cc;
+    --accent:#0f6b75; --accent-fg:#ffffff; --accent-soft:#dff0f1;
+    --livre:#17834a; --livre-bg:#dcf3e5; --livre-hover:#c3ead3;
+    --hatch-a:#eef1f3; --hatch-b:#e3e8ec;
+    --p1:#6d3fb3; --p1-bg:#eee6fa; --p2:#0b7480; --p2-bg:#dcf0f2; --p3:#9a5b00; --p3-bg:#fbedd6; --p4:#b3304f; --p4-bg:#fbe3e9;
+    --erro:#b42318; --sombra:0 10px 30px rgba(15,40,55,.18);
+    --font-ui:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-num:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg:#0f1519; --surface:#172026; --fg:#e4ebef; --muted:#93a3ae; --line:#26333b; --line-strong:#3a4a54;
+    --accent:#4fb8c2; --accent-fg:#06262a; --accent-soft:#163238;
+    --livre:#5fd394; --livre-bg:#143a27; --livre-hover:#1b4d33;
+    --hatch-a:#141c21; --hatch-b:#1b252b;
+    --p1:#c3a2f2; --p1-bg:#2c2142; --p2:#6fd0da; --p2-bg:#123438; --p3:#f0b75c; --p3-bg:#3a2b12; --p4:#f08ba3; --p4-bg:#3f1d27;
+    --erro:#ff8a7a; --sombra:0 10px 30px rgba(0,0,0,.5); color-scheme:dark; } }
+  :root[data-theme="dark"] {
+    --bg:#0f1519; --surface:#172026; --fg:#e4ebef; --muted:#93a3ae; --line:#26333b; --line-strong:#3a4a54;
+    --accent:#4fb8c2; --accent-fg:#06262a; --accent-soft:#163238;
+    --livre:#5fd394; --livre-bg:#143a27; --livre-hover:#1b4d33;
+    --hatch-a:#141c21; --hatch-b:#1b252b;
+    --p1:#c3a2f2; --p1-bg:#2c2142; --p2:#6fd0da; --p2-bg:#123438; --p3:#f0b75c; --p3-bg:#3a2b12; --p4:#f08ba3; --p4-bg:#3f1d27;
+    --erro:#ff8a7a; --sombra:0 10px 30px rgba(0,0,0,.5); color-scheme:dark; }
+
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--fg); font-family:var(--font-ui); font-size:14px; line-height:1.45; }
+  .pagina { max-width:1500px; margin:0 auto; padding-block:20px 48px;
+            padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px));
+            display:flex; flex-direction:column; gap:16px; }
+  h1 { font-size:22px; margin:0; text-wrap:balance; letter-spacing:-.01em; }
+  .sub { color:var(--muted); margin:4px 0 0; max-width:70ch; }
+  .num { font-family:var(--font-num); font-variant-numeric:tabular-nums; }
+
+  /* Controles */
+  .controles { display:flex; flex-direction:column; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .grupo { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  .grupo > span.rot { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); min-width:84px; }
+  .chip { font:inherit; font-size:13px; border:1px solid var(--line-strong); background:transparent; color:var(--fg);
+          border-radius:999px; padding:5px 12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .chip:hover { border-color:var(--accent); }
+  .chip[aria-pressed="true"] { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  .chip .bola { width:9px; height:9px; border-radius:50%; background:var(--cor); }
+  .chip:focus-visible, button:focus-visible, select:focus-visible, td.ok:focus-visible, .ok:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .opcoes { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:8px; }
+  .opcao { font:inherit; text-align:left; border:1px solid var(--line); background:var(--surface); color:var(--fg); border-radius:10px;
+           padding:10px 12px; cursor:pointer; display:flex; flex-direction:column; gap:2px; }
+  .opcao b { font-size:14px; }
+  .opcao small { color:var(--muted); font-size:12px; }
+  .opcao[aria-pressed="true"] { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); background:var(--accent-soft); }
+
+  .painel { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .painel-topo { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px 16px; align-items:flex-start; }
+  .painel-topo h2 { font-size:17px; margin:0; }
+  .painel-topo p { margin:2px 0 0; color:var(--muted); max-width:75ch; }
+  .pros { display:flex; flex-wrap:wrap; gap:6px; font-size:12px; }
+  .pros span { border-radius:6px; padding:2px 8px; background:var(--bg); border:1px solid var(--line); }
+  .legenda { display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--muted); }
+  .legenda i { display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-3px; margin-right:5px; border:1px solid var(--line); }
+  .i-livre { background:var(--livre-bg); border-color:var(--livre) !important; }
+  .i-off { background:repeating-linear-gradient(45deg,var(--hatch-a) 0 4px,var(--hatch-b) 4px 8px); }
+  .i-aula { background:var(--p1-bg); border-left:3px solid var(--p1) !important; }
+
+  .rolar { overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:8px; }
+
+  /* Células comuns */
+  .off { background:repeating-linear-gradient(45deg,var(--hatch-a) 0 4px,var(--hatch-b) 4px 8px); }
+  .ok { cursor:pointer; }
+  .ok.verde { background:var(--livre-bg); }
+  .ok:hover { background:var(--livre-hover); }
+  .ok.verde::after, .ok:hover::after { content:"+"; color:var(--livre); font-weight:600; }
+  .aula { border-left:3px solid var(--cor); background:var(--cor-bg); color:var(--fg); border-radius:4px; padding:2px 5px;
+          font-size:11px; line-height:1.25; overflow:hidden; cursor:pointer; text-align:left; font-family:inherit; }
+  .aula b { display:block; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .aula span { color:var(--muted); white-space:nowrap; }
+  .apagada { opacity:.32; }
+
+  /* Tabelas de grade */
+  table.g { border-collapse:separate; border-spacing:0; width:100%; }
+  .g th, .g td { border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:0; }
+  .g th { background:var(--bg); font-size:12px; font-weight:600; padding:6px 4px; position:sticky; top:0; z-index:2; white-space:nowrap; }
+  .g th.salasub { font-weight:500; color:var(--muted); font-size:11px; top:29px; }
+  .g .hora { position:sticky; left:0; z-index:1; background:var(--surface); font-family:var(--font-num); font-size:11px; color:var(--muted);
+             text-align:right; padding:0 6px; width:52px; min-width:52px; }
+  .g th.hora { z-index:3; background:var(--bg); }
+  .g .divd { border-left:2px solid var(--line-strong); }
+  .g th.hoje { color:var(--accent); }
+  .g td.c { height:26px; min-width:58px; text-align:center; font-size:12px; vertical-align:top; }
+  .g td.c .aula { height:100%; margin:1px; }
+
+  /* Opção 2: semana clássica */
+  .classica { display:grid; grid-template-columns:52px repeat(7, minmax(96px, 1fr)); min-width:760px; }
+  .classica .cab { background:var(--bg); font-size:12px; font-weight:600; padding:6px 4px; text-align:center; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:2; }
+  .classica .cab.hoje { color:var(--accent); }
+  .classica .col { position:relative; border-left:1px solid var(--line); }
+  .classica .cel { height:28px; border-bottom:1px solid var(--line); font-size:11px; display:flex; align-items:center; justify-content:center; color:var(--livre); }
+  .classica .cel.ok::after { content:none; }
+  .classica .cel.ok:hover::after, .classica .cel.verde::after { content:attr(data-rot); }
+  .classica .horas div { height:28px; font-family:var(--font-num); font-size:11px; color:var(--muted); text-align:right; padding-right:6px; border-bottom:1px solid var(--line); }
+  .classica .aula { position:absolute; margin:1px; }
+
+  /* Opção 3: linha do tempo */
+  .tl td.c { min-width:40px; height:30px; }
+  .tl .dia { position:sticky; left:0; z-index:1; background:var(--surface); font-weight:600; font-size:12px; padding:0 8px; white-space:nowrap; }
+  .tl .sala { position:sticky; left:0; background:var(--surface); font-size:11px; color:var(--muted); padding:0 8px; white-space:nowrap; }
+  .tl tr.ini td { border-top:2px solid var(--line-strong); }
+
+  /* Opção 4: lista */
+  .lista { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; }
+  .diacard { border:1px solid var(--line); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:10px; min-width:0; }
+  .diacard h3 { margin:0; font-size:15px; display:flex; justify-content:space-between; gap:8px; }
+  .diacard h3 small { color:var(--muted); font-weight:400; font-family:var(--font-num); }
+  .diacard.hoje { border-color:var(--accent); }
+  .itens { display:flex; flex-direction:column; gap:6px; margin:0; padding:0; list-style:none; }
+  .itens .aula { font-size:12px; padding:5px 8px; width:100%; border:0; border-left:3px solid var(--cor); }
+  .itens .aula b { display:inline; }
+  .slots { display:flex; flex-wrap:wrap; gap:6px; }
+  .slot { font:inherit; font-size:12px; border:1px solid var(--livre); color:var(--livre); background:var(--livre-bg); border-radius:6px; padding:4px 8px; cursor:pointer; }
+  .slot:hover { background:var(--livre-hover); }
+  .slot small { color:var(--muted); }
+  .vazio { color:var(--muted); font-size:12px; margin:0; }
+  .rotulo { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0; }
+
+  /* Opção 5: mapa */
+  .mapa td.c { height:24px; min-width:40px; font-family:var(--font-num); font-size:11px; text-align:center; vertical-align:middle; }
+  .mapa td.ok::after, .mapa td.ok:hover::after { content:none; }
+  .mapa td.n1 { background:color-mix(in srgb, var(--livre-bg) 70%, var(--surface)); color:var(--livre); }
+  .mapa td.n2 { background:var(--livre-bg); color:var(--livre); }
+  .mapa td.n3 { background:color-mix(in srgb, var(--livre) 35%, var(--livre-bg)); color:var(--fg); font-weight:500; }
+  .mapa td.ok:hover { outline:2px solid var(--livre); outline-offset:-2px; }
+  .mapa td.tem { background:var(--cor-bg); box-shadow:inset 3px 0 0 var(--cor); color:var(--cor); font-size:10px; }
+
+  /* Opção 6: quadro por professor */
+  .quadro td { vertical-align:top; padding:6px; min-width:120px; }
+  .quadro td.prof { position:sticky; left:0; background:var(--surface); z-index:1; min-width:110px; font-weight:600; white-space:nowrap; }
+  .quadro td.prof small { display:block; font-weight:400; color:var(--muted); font-size:11px; }
+  .quadro .pilha { display:flex; flex-direction:column; gap:4px; }
+  .quadro .aula { border:0; border-left:3px solid var(--cor); width:100%; }
+  .quadro .slot { text-align:left; }
+
+  /* Diálogo */
+  dialog { border:0; border-radius:14px; padding:0; width:min(92vw, 400px); background:var(--surface); color:var(--fg); box-shadow:var(--sombra); }
+  dialog::backdrop { background:rgba(10,20,28,.45); }
+  .dlg { padding:18px; display:flex; flex-direction:column; gap:12px; }
+  .dlg h3 { margin:0; font-size:17px; }
+  .dlg p.quando { margin:0; color:var(--muted); }
+  .dlg label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
+  .dlg select { font:inherit; font-size:14px; padding:8px; border:1px solid var(--line-strong); border-radius:8px; background:var(--surface); color:var(--fg); }
+  .dlg .acoes { display:flex; gap:8px; flex-wrap:wrap; }
+  .btn { font:inherit; font-weight:600; border:0; border-radius:8px; padding:9px 16px; cursor:pointer; background:var(--accent); color:var(--accent-fg); }
+  .btn.sec { background:transparent; color:var(--fg); border:1px solid var(--line-strong); }
+  .btn.perigo { background:var(--erro); color:var(--surface); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .erro { color:var(--erro); font-size:13px; margin:0; }
+  .toast { position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%); background:var(--fg); color:var(--bg);
+           padding:10px 16px; border-radius:10px; font-size:13px; box-shadow:var(--sombra); z-index:20; }
+  @media (prefers-reduced-motion: no-preference) { .toast { animation:sobe .2s ease-out; } @keyframes sobe { from { transform:translate(-50%, 8px); opacity:0; } } }
+  @media (max-width:520px) { .grupo > span.rot { min-width:100%; } }
+</style>
+
+<div class="pagina">
+  <header>
+    <h1>Agenda semanal · 6 opções de layout</h1>
+    <p class="sub">Escolha um professor no filtro para ver em verde onde dá para começar uma aula de 1h com ele. Toque no verde para agendar.
+      Os dados são de exemplo (semana de 25 a 31/10/2026) e as aulas que você marcar aparecem em todas as opções.</p>
+  </header>
+
+  <section class="controles" aria-label="Filtros">
+    <div class="grupo" id="filtro" role="group" aria-label="Filtrar por professor"><span class="rot">Professor</span></div>
+    <div class="opcoes" id="opcoes" role="group" aria-label="Escolher layout"></div>
+  </section>
+
+  <section class="painel" aria-live="polite">
+    <div class="painel-topo">
+      <div><h2 id="p-titulo"></h2><p id="p-desc"></p></div>
+      <div class="pros" id="p-pros"></div>
+    </div>
+    <div class="legenda">
+      <span><i class="i-livre"></i>Dá para começar uma aula aqui</span>
+      <span><i class="i-off"></i>Sem professor ou sala livre</span>
+      <span><i class="i-aula"></i>Aula marcada (cor do professor)</span>
+    </div>
+    <div id="vista"></div>
+  </section>
+</div>
+
+<dialog id="dlg"><form class="dlg" id="dlg-form" method="dialog"></form></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+// ---------------- Dados de exemplo ----------------
+const ABRE = 13 * 60, FECHA = 22 * 60, PASSO = 30, MINIMO = 60;
+const SEMANA_INI = "2026-10-25", HOJE = "2026-10-27";
+const DIAS = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+const CURTO = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const h = t => String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0");
+const m = s => { const [a, b] = s.split(":").map(Number); return a * 60 + b; };
+const addDias = (d, n) => { const x = new Date(d + "T12:00"); x.setDate(x.getDate() + n); return x.toLocaleDateString("sv-SE"); };
+const dow = d => new Date(d + "T12:00").getDay();
+const ddmm = d => d.slice(8, 10) + "/" + d.slice(5, 7);
+const SEMANA = [0,1,2,3,4,5,6].map(i => addDias(SEMANA_INI, i));
+const SLOTS = []; for (let t = ABRE; t < FECHA; t += PASSO) SLOTS.push(t);
+
+const PROFS = [
+  { id: 1, nome: "Cibele", mat: "Inglês", cor: "p1",
+    disp: { 1: [["13:00","18:00"]], 3: [["13:00","18:00"]], 5: [["14:00","20:00"]], 6: [["13:00","17:00"]] } },
+  { id: 2, nome: "Ana", mat: "Matemática", cor: "p2",
+    disp: { 1: [["14:00","22:00"]], 2: [["13:00","19:00"]], 4: [["13:00","19:00"]] } },
+  { id: 3, nome: "Bruno", mat: "Física", cor: "p3",
+    disp: { 2: [["18:00","22:00"]], 3: [["15:00","22:00"]], 4: [["18:00","22:00"]], 5: [["13:00","18:00"]] } },
+  { id: 4, nome: "Carla", mat: "Piano", cor: "p4",
+    disp: { 1: [["13:00","17:00"]], 3: [["13:00","22:00"]], 6: [["13:00","18:00"]] } },
+];
+const SALAS = [{ id: 1, nome: "Sala 1" }, { id: 2, nome: "Sala 2" }, { id: 3, nome: "Sala 3" }];
+const ALUNOS = ["Gabriel","Helena","João","Luiza","Maria","Pedro","Rafael","Sofia"].map((nome, i) => ({ id: i + 1, nome }));
+const aluno = n => ALUNOS.find(a => a.nome === n).id;
+let proxId = 1;
+const A = (dia, ini, dur, al, prof, sala) => ({ id: proxId++, data: SEMANA[dia], ini: m(ini), fim: m(ini) + dur, aluno: aluno(al), prof, sala });
+let AULAS = [
+  A(1,"14:00",60,"João",1,1), A(1,"15:00",90,"Maria",2,2), A(1,"13:00",60,"Pedro",4,3), A(1,"19:00",60,"Luiza",2,1),
+  A(2,"13:30",60,"Rafael",2,1), A(2,"19:00",60,"Sofia",3,2), A(2,"16:00",60,"Gabriel",2,3),
+  A(3,"13:00",60,"Luiza",1,1), A(3,"16:30",90,"Pedro",1,2), A(3,"15:00",60,"Maria",3,3), A(3,"18:00",60,"Helena",4,1),
+  A(4,"14:00",120,"João",2,2), A(4,"20:00",60,"Rafael",3,1),
+  A(5,"15:00",60,"Sofia",1,1), A(5,"13:00",60,"Gabriel",3,2),
+  A(6,"14:00",60,"Helena",4,3), A(6,"13:00",60,"Maria",1,2),
+];
+
+// ---------------- Regras ----------------
+const prof = id => PROFS.find(p => p.id === id);
+const sobrepoe = (a1, b1, a2, b2) => a1 < b2 && a2 < b1;
+const dispOk = (p, d, ini, fim) => (prof(p).disp[dow(d)] || []).some(([a, b]) => m(a) <= ini && fim <= m(b));
+const profLivre = (p, d, ini, fim) => dispOk(p, d, ini, fim) && !AULAS.some(x => x.prof === p && x.data === d && sobrepoe(x.ini, x.fim, ini, fim));
+const salaLivre = (s, d, ini, fim) => !AULAS.some(x => x.sala === s && x.data === d && sobrepoe(x.ini, x.fim, ini, fim));
+const alunoLivre = (a, d, ini, fim) => !AULAS.some(x => x.aluno === a && x.data === d && sobrepoe(x.ini, x.fim, ini, fim));
+const profsDoFiltro = () => estado.filtro ? [estado.filtro] : PROFS.map(p => p.id);
+// Dá para começar uma aula de 1h às t? (opcionalmente numa sala específica)
+function podeComecar(d, t, sala) {
+  if (t + MINIMO > FECHA) return { profs: [], salas: [] };
+  const profs = profsDoFiltro().filter(p => profLivre(p, d, t, t + MINIMO));
+  const salas = (sala ? SALAS.filter(s => s.id === sala) : SALAS).filter(s => salaLivre(s.id, d, t, t + MINIMO));
+  return profs.length && salas.length ? { profs, salas } : { profs: [], salas: [] };
+}
+const visivel = a => !estado.filtro || a.prof === estado.filtro;
+const nomeAluno = id => ALUNOS.find(a => a.id === id).nome;
+const corVars = p => `--cor:var(--${prof(p).cor});--cor-bg:var(--${prof(p).cor}-bg)`;
+const aulaBtn = (a, extra = "", estilo = "") =>
+  `<button type="button" class="aula ${visivel(a) ? "" : "apagada"} ${extra}" data-aula="${a.id}" style="${corVars(a.prof)};${estilo}"
+     aria-label="${nomeAluno(a.aluno)} com ${prof(a.prof).nome}, ${h(a.ini)} a ${h(a.fim)}"><b>${nomeAluno(a.aluno)}</b><span>${prof(a.prof).nome} · ${h(a.ini)}</span></button>`;
+// Janelas livres contínuas (≥ 1h) de um professor num dia, considerando salas livres
+function janelas(p, d) {
+  const res = []; let ini = null;
+  for (const t of [...SLOTS, FECHA]) {
+    const ok = t < FECHA && profLivre(p, d, t, t + PASSO) && SALAS.some(s => salaLivre(s.id, d, t, t + PASSO));
+    if (ok && ini === null) ini = t;
+    if (!ok && ini !== null) { if (t - ini >= MINIMO) res.push([ini, t]); ini = null; }
+  }
+  return res;
+}
+
+// ---------------- Estado ----------------
+const estado = { filtro: 1, opcao: 1 };
+try { const f = localStorage.getItem("layouts-filtro"); if (f !== null) estado.filtro = Number(f) || null; } catch {}
+const deHash = () => { const n = Number((location.hash.match(/^#opcao-(\d)$/) || [])[1]); if (n >= 1 && n <= 6) estado.opcao = n; };
+deHash();
+
+// ---------------- Opções de layout ----------------
+const OPCOES = [
+  { t: "Semana × salas", r: "Cada dia dividido em uma coluna por sala",
+    d: "Todos os dias da semana lado a lado, e dentro de cada dia uma coluna para cada sala. Você toca no horário da sala exata.",
+    pros: ["Vê cada sala", "Escolhe a sala no clique", "Largo no celular"], render: renderSalas },
+  { t: "Semana clássica", r: "Igual Google Agenda: 7 colunas",
+    d: "Uma coluna por dia. As aulas aparecem como blocos lado a lado (uma faixa por sala). O verde mostra quantas salas estão livres.",
+    pros: ["Visual familiar", "Mais limpo", "Sala escolhida no diálogo"], render: renderClassica },
+  { t: "Linha do tempo", r: "Dias nas linhas, horas na horizontal",
+    d: "Cada dia vira um bloco de linhas, uma por sala, com os horários correndo da esquerda para a direita. Bom para ver a ocupação das salas.",
+    pros: ["Ocupação das salas", "Lê como planilha", "Rolagem lateral"], render: renderLinha },
+  { t: "Lista por dia", r: "Cartões, pensado para celular",
+    d: "Cada dia é um cartão com as aulas e, abaixo, os horários livres como botões. Sem grade: é o mais fácil de usar no celular.",
+    pros: ["Ótimo no celular", "Rápido para achar horário", "Não mostra a grade"], render: renderLista },
+  { t: "Mapa de disponibilidade", r: "A semana inteira numa tela",
+    d: "Grade compacta. Cada quadrado mostra quantas salas estão livres (com professor filtrado) ou quantos professores estão livres (sem filtro).",
+    pros: ["Cabe numa tela", "Mostra onde tem mais vaga", "Menos detalhe das aulas"], render: renderMapa },
+  { t: "Quadro por professor", r: "Uma linha por professor",
+    d: "Professores nas linhas e dias nas colunas. Cada célula lista as aulas e as janelas livres do professor naquele dia.",
+    pros: ["Foco no professor", "Janelas livres prontas", "Não mostra a grade de horas"], render: renderQuadro },
+];
+
+// ---------------- Controles ----------------
+function renderControles() {
+  $("#filtro").innerHTML = `<span class="rot">Professor</span>` +
+    `<button type="button" class="chip" data-f="0" aria-pressed="${!estado.filtro}">Todos</button>` +
+    PROFS.map(p => `<button type="button" class="chip" data-f="${p.id}" aria-pressed="${estado.filtro === p.id}" style="--cor:var(--${p.cor})">
+      <span class="bola"></span>${p.nome} <small>${p.mat}</small></button>`).join("");
+  $("#opcoes").innerHTML = OPCOES.map((o, i) => `<button type="button" class="opcao" data-o="${i + 1}" aria-pressed="${estado.opcao === i + 1}">
+    <b>${i + 1}. ${o.t}</b><small>${o.r}</small></button>`).join("");
+}
+document.addEventListener("click", e => {
+  const f = e.target.closest("[data-f]");
+  if (f) { estado.filtro = Number(f.dataset.f) || null; try { localStorage.setItem("layouts-filtro", estado.filtro || 0); } catch {} return render(); }
+  const o = e.target.closest("[data-o]");
+  if (o) { estado.opcao = Number(o.dataset.o); history.replaceState(null, "", "#opcao-" + estado.opcao); return render(); }
+  const a = e.target.closest("[data-aula]");
+  if (a) return abrirDetalhe(Number(a.dataset.aula));
+  const c = e.target.closest("[data-d][data-t]");
+  if (c && c.classList.contains("ok")) abrirAgendar(c.dataset.d, Number(c.dataset.t), { sala: Number(c.dataset.s) || null, prof: Number(c.dataset.p) || null });
+});
+document.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches("td.ok, div.ok")) { e.preventDefault(); e.target.click(); }
+});
+window.addEventListener("hashchange", () => { deHash(); render(); });
+
+function render() {
+  renderControles();
+  const o = OPCOES[estado.opcao - 1];
+  $("#p-titulo").textContent = `Opção ${estado.opcao} · ${o.t}`;
+  $("#p-desc").textContent = o.d;
+  $("#p-pros").innerHTML = o.pros.map(x => `<span>${x}</span>`).join("");
+  $("#vista").innerHTML = o.render();
+  const hoje = $("#vista").querySelector(".hoje");
+  const rol = $("#vista").querySelector(".rolar");
+  if (hoje && rol && rol.clientWidth < 700 && rol.scrollWidth > rol.clientWidth) rol.scrollLeft = Math.max(0, hoje.offsetLeft - 60);
+}
+const $ = s => document.querySelector(s);
+const celula = (d, t, sala, classes = "c") => {
+  const r = podeComecar(d, t, sala);
+  return r.profs.length
+    ? `<td class="${classes} ok ${estado.filtro ? "verde" : ""}" tabindex="0" data-d="${d}" data-t="${t}" ${sala ? `data-s="${sala}"` : ""}
+         aria-label="Agendar ${DIAS[dow(d)]} ${h(t)}${sala ? " na Sala " + sala : ""}"></td>`
+    : `<td class="${classes} off"></td>`;
+};
+
+// 1. Semana × salas
+function renderSalas() {
+  let html = `<div class="rolar"><table class="g"><thead><tr><th class="hora" rowspan="2"></th>` +
+    SEMANA.map(d => `<th colspan="${SALAS.length}" class="divd ${d === HOJE ? "hoje" : ""}">${CURTO[dow(d)]} ${ddmm(d)}</th>`).join("") + `</tr><tr>` +
+    SEMANA.map(() => SALAS.map((s, i) => `<th class="salasub ${i ? "" : "divd"}">${s.nome.replace("Sala ", "S")}</th>`).join("")).join("") + `</tr></thead><tbody>`;
+  const coberto = new Set();
+  for (const t of SLOTS) {
+    html += `<tr><td class="hora">${h(t)}</td>`;
+    for (const d of SEMANA) SALAS.forEach((s, i) => {
+      const k = `${d}|${s.id}|${t}`; if (coberto.has(k)) return;
+      const div = i ? "" : " divd";
+      const a = AULAS.find(x => x.data === d && x.sala === s.id && x.ini >= t && x.ini < t + PASSO);
+      if (a) {
+        const span = Math.ceil((a.fim - t) / PASSO);
+        for (let j = 1; j < span; j++) coberto.add(`${d}|${s.id}|${t + j * PASSO}`);
+        html += `<td class="c${div}" rowspan="${span}">${aulaBtn(a)}</td>`;
+      } else html += celula(d, t, s.id, "c" + div);
+    });
+    html += `</tr>`;
+  }
+  return html + `</tbody></table></div>`;
+}
+
+// 2. Semana clássica
+function renderClassica() {
+  const H = 28;
+  let html = `<div class="rolar"><div class="classica"><div class="cab"></div>` +
+    SEMANA.map(d => `<div class="cab ${d === HOJE ? "hoje" : ""}">${CURTO[dow(d)]} ${ddmm(d)}</div>`).join("") +
+    `<div class="horas">${SLOTS.map(t => `<div>${t % 60 ? "" : h(t)}</div>`).join("")}</div>`;
+  for (const d of SEMANA) {
+    html += `<div class="col">`;
+    for (const t of SLOTS) {
+      const r = podeComecar(d, t);
+      const rot = estado.filtro ? `+ ${r.salas.length} sala${r.salas.length > 1 ? "s" : ""}` : `+ ${r.profs.length} prof.`;
+      html += r.profs.length
+        ? `<div class="cel ok ${estado.filtro ? "verde" : ""}" tabindex="0" data-d="${d}" data-t="${t}" data-rot="${rot}" aria-label="Agendar ${DIAS[dow(d)]} ${h(t)}"></div>`
+        : `<div class="cel off"></div>`;
+    }
+    AULAS.filter(a => a.data === d).forEach(a => {
+      const i = SALAS.findIndex(s => s.id === a.sala), w = 100 / SALAS.length;
+      html += aulaBtn(a, "", `top:${(a.ini - ABRE) / PASSO * H}px;height:${(a.fim - a.ini) / PASSO * H - 2}px;left:calc(${i * w}% );width:calc(${w}% - 2px)`);
+    });
+    html += `</div>`;
+  }
+  return html + `</div></div>`;
+}
+
+// 3. Linha do tempo
+function renderLinha() {
+  let html = `<div class="rolar"><table class="g tl"><thead><tr><th class="hora" colspan="2"></th>` +
+    SLOTS.map(t => `<th class="num">${t % 60 ? "·" : h(t)}</th>`).join("") + `</tr></thead><tbody>`;
+  for (const d of SEMANA) SALAS.forEach((s, i) => {
+    html += `<tr class="${i ? "" : "ini"}">` + (i ? "" : `<td class="dia ${d === HOJE ? "hoje" : ""}" rowspan="${SALAS.length}">${CURTO[dow(d)]} ${ddmm(d)}</td>`) +
+      `<td class="sala">${s.nome}</td>`;
+    for (let t = ABRE; t < FECHA;) {
+      const a = AULAS.find(x => x.data === d && x.sala === s.id && x.ini === t);
+      if (a) { const span = (a.fim - a.ini) / PASSO; html += `<td class="c" colspan="${span}">${aulaBtn(a)}</td>`; t = a.fim; }
+      else { html += celula(d, t, s.id); t += PASSO; }
+    }
+    html += `</tr>`;
+  });
+  return html + `</tbody></table></div>`;
+}
+
+// 4. Lista por dia
+function renderLista() {
+  return `<div class="lista">` + SEMANA.map(d => {
+    const aulas = AULAS.filter(a => a.data === d && visivel(a)).sort((a, b) => a.ini - b.ini);
+    const livres = SLOTS.map(t => ({ t, ...podeComecar(d, t) })).filter(x => x.profs.length);
+    const quem = estado.filtro ? prof(estado.filtro).nome : "qualquer professor";
+    return `<article class="diacard ${d === HOJE ? "hoje" : ""}">
+      <h3>${DIAS[dow(d)]} <small>${ddmm(d)}</small></h3>
+      <p class="rotulo">Aulas${estado.filtro ? " de " + prof(estado.filtro).nome : ""}</p>
+      ${aulas.length ? `<ul class="itens">${aulas.map(a => `<li>${aulaBtn(a)}</li>`).join("")}</ul>` : `<p class="vazio">Nenhuma aula.</p>`}
+      <p class="rotulo">Livre para ${quem}</p>
+      ${livres.length ? `<div class="slots">${livres.map(x => `<button type="button" class="slot ok" data-d="${d}" data-t="${x.t}">
+          <span class="num">${h(x.t)}</span> <small>${estado.filtro ? x.salas.length + " sala" + (x.salas.length > 1 ? "s" : "") : x.profs.length + " prof."}</small></button>`).join("")}</div>`
+        : `<p class="vazio">Sem horário livre.</p>`}
+    </article>`;
+  }).join("") + `</div>`;
+}
+
+// 5. Mapa de disponibilidade
+function renderMapa() {
+  let html = `<div class="rolar"><table class="g mapa"><thead><tr><th class="hora"></th>` +
+    SEMANA.map(d => `<th class="${d === HOJE ? "hoje" : ""}">${CURTO[dow(d)]}<br><span class="num" style="font-weight:400">${ddmm(d)}</span></th>`).join("") + `</tr></thead><tbody>`;
+  for (const t of SLOTS) {
+    html += `<tr><td class="hora">${h(t)}</td>`;
+    for (const d of SEMANA) {
+      const r = podeComecar(d, t);
+      const n = estado.filtro ? r.salas.length : r.profs.length;
+      const dela = estado.filtro && AULAS.find(a => a.data === d && a.prof === estado.filtro && a.ini <= t && t < a.fim);
+      if (dela) html += `<td class="c tem" style="${corVars(dela.prof)}" data-aula="${dela.id}" title="Aula de ${prof(dela.prof).nome}">${dela.ini === t ? nomeAluno(dela.aluno) : ""}</td>`;
+      else if (n) html += `<td class="c ok n${Math.min(n, 3)}" tabindex="0" data-d="${d}" data-t="${t}" aria-label="${n} livre(s) ${DIAS[dow(d)]} ${h(t)}">${n}</td>`;
+      else html += `<td class="c off"></td>`;
+    }
+    html += `</tr>`;
+  }
+  return html + `</tbody></table></div>
+    <p class="vazio">${estado.filtro ? `O número é quantas salas estão livres para ${prof(estado.filtro).nome} começar uma aula de 1h.` : "O número é quantos professores estão livres (com sala) para uma aula de 1h."}</p>`;
+}
+
+// 6. Quadro por professor
+function renderQuadro() {
+  const lista = estado.filtro ? [prof(estado.filtro)] : PROFS;
+  let html = `<div class="rolar"><table class="g quadro"><thead><tr><th class="hora" style="width:auto"></th>` +
+    SEMANA.map(d => `<th class="${d === HOJE ? "hoje" : ""}">${CURTO[dow(d)]} ${ddmm(d)}</th>`).join("") + `</tr></thead><tbody>`;
+  for (const p of lista) {
+    html += `<tr><td class="prof" style="color:var(--${p.cor})">${p.nome}<small>${p.mat}</small></td>`;
+    for (const d of SEMANA) {
+      const aulas = AULAS.filter(a => a.data === d && a.prof === p.id).sort((a, b) => a.ini - b.ini);
+      const js = janelas(p.id, d);
+      html += `<td><div class="pilha">${aulas.map(a => aulaBtn(a)).join("")}` +
+        js.map(([a, b]) => `<button type="button" class="slot ok" data-d="${d}" data-t="${a}" data-p="${p.id}"><span class="num">${h(a)}–${h(b)}</span></button>`).join("") +
+        (!aulas.length && !js.length ? `<span class="vazio">—</span>` : "") + `</div></td>`;
+    }
+    html += `</tr>`;
+  }
+  return html + `</tbody></table></div>`;
+}
+
+// ---------------- Diálogo: agendar ----------------
+let alvo = null;
+function abrirAgendar(d, t, { sala, prof: pFix }) {
+  alvo = { d, t, sala, pFix };
+  const profs = (pFix ? [pFix] : profsDoFiltro()).filter(p => profLivre(p, d, t, t + MINIMO));
+  if (!profs.length) return toast("Nenhum professor livre nesse horário.");
+  $("#dlg-form").innerHTML = `
+    <h3>Nova aula</h3>
+    <p class="quando">${DIAS[dow(d)]}, ${ddmm(d)} às <span class="num">${h(t)}</span>${sala ? " · " + SALAS.find(s => s.id === sala).nome : ""}</p>
+    <label>Professor <select id="g-prof">${profs.map(p => `<option value="${p}">${prof(p).nome} (${prof(p).mat})</option>`).join("")}</select></label>
+    <label>Sala <select id="g-sala"></select></label>
+    <label>Duração <select id="g-dur"></select></label>
+    <label>Aluno <select id="g-aluno">${ALUNOS.map(a => `<option value="${a.id}">${a.nome}</option>`).join("")}</select></label>
+    <p class="erro" id="g-erro" hidden></p>
+    <div class="acoes"><button type="button" class="btn" id="g-ok">Agendar</button><button type="button" class="btn sec" id="g-x">Fechar</button></div>`;
+  $("#g-prof").onchange = atualizarSalas; $("#g-sala").onchange = atualizarDur;
+  $("#g-x").onclick = () => $("#dlg").close();
+  $("#g-ok").onclick = salvar;
+  atualizarSalas();
+  $("#dlg").showModal();
+}
+function atualizarSalas() {
+  const p = Number($("#g-prof").value), { d, t, sala } = alvo;
+  const salas = SALAS.filter(s => (!sala || s.id === sala) && salaLivre(s.id, d, t, t + MINIMO));
+  $("#g-sala").innerHTML = salas.map(s => `<option value="${s.id}">${s.nome}</option>`).join("") || `<option value="">Nenhuma sala livre</option>`;
+  atualizarDur();
+}
+function atualizarDur() {
+  const p = Number($("#g-prof").value), s = Number($("#g-sala").value), { d, t } = alvo;
+  const durs = []; for (let x = MINIMO; x <= 240 && t + x <= FECHA; x += PASSO) if (profLivre(p, d, t, t + x) && s && salaLivre(s, d, t, t + x)) durs.push(x); else break;
+  $("#g-dur").innerHTML = durs.map(x => `<option value="${x}">${Math.floor(x / 60)}h${x % 60 ? "30" : ""} (até ${h(t + x)})</option>`).join("") || `<option value="">—</option>`;
+  $("#g-ok").disabled = !durs.length;
+}
+function salvar() {
+  const p = Number($("#g-prof").value), s = Number($("#g-sala").value), dur = Number($("#g-dur").value), al = Number($("#g-aluno").value), { d, t } = alvo;
+  const erro = msg => { $("#g-erro").textContent = msg; $("#g-erro").hidden = false; };
+  if (!p || !s || !dur) return erro("Escolha professor, sala e duração.");
+  if (!alunoLivre(al, d, t, t + dur)) return erro(`${nomeAluno(al)} já tem aula nesse horário. Escolha outro aluno ou horário.`);
+  AULAS.push({ id: proxId++, data: d, ini: t, fim: t + dur, aluno: al, prof: p, sala: s });
+  $("#dlg").close();
+  render();
+  toast(`Aula marcada: ${nomeAluno(al)} com ${prof(p).nome}, ${CURTO[dow(d)]} ${h(t)}–${h(t + dur)}, ${SALAS.find(x => x.id === s).nome}.`);
+}
+
+// ---------------- Diálogo: detalhe / cancelar ----------------
+function abrirDetalhe(id) {
+  const a = AULAS.find(x => x.id === id);
+  $("#dlg-form").innerHTML = `
+    <h3>${nomeAluno(a.aluno)}</h3>
+    <p class="quando">${prof(a.prof).nome} (${prof(a.prof).mat}) · ${SALAS.find(s => s.id === a.sala).nome}<br>
+      ${DIAS[dow(a.data)]}, ${ddmm(a.data)} · <span class="num">${h(a.ini)}–${h(a.fim)}</span></p>
+    <div class="acoes"><button type="button" class="btn perigo" id="c-ok">Cancelar aula</button><button type="button" class="btn sec" id="c-x">Fechar</button></div>`;
+  $("#c-x").onclick = () => $("#dlg").close();
+  $("#c-ok").onclick = () => { AULAS = AULAS.filter(x => x.id !== id); $("#dlg").close(); render(); toast("Aula cancelada. O horário ficou livre."); };
+  $("#dlg").showModal();
+}
+
+let tTimer;
+function toast(txt) { const el = $("#toast"); el.textContent = txt; el.hidden = false; clearTimeout(tTimer); tTimer = setTimeout(() => el.hidden = true, 3200); }
+
+render();
+</script>
