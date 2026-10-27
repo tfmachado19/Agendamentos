@@ -11,14 +11,17 @@
   body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); }
   header { background:var(--accent); color:#fff; padding:12px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
   header h1 { font-size:18px; margin:0; flex:1; }
-  nav button { background:transparent; color:#fff; border:1px solid #fff6; border-radius:6px; padding:6px 10px; cursor:pointer; }
+  nav { display:flex; gap:6px; flex-wrap:wrap; }
+  nav button, #sair { background:transparent; color:#fff; border:1px solid #fff6; border-radius:6px; padding:6px 10px; cursor:pointer; }
   nav button.active { background:#fff; color:var(--accent); }
+  .aviso { background:#fef3c7; color:#92400e; padding:8px 16px; font-size:13px; }
   main { padding:16px; max-width:1200px; margin:auto; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
   .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
   label { display:flex; flex-direction:column; font-size:13px; color:var(--muted); gap:4px; }
   input, select { padding:7px; border:1px solid var(--line); border-radius:6px; font-size:14px; }
   button.primary { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; }
+  button.primary:disabled { opacity:.6; }
   button.link { background:none; border:0; color:var(--danger); cursor:pointer; }
   .msg { margin-top:10px; font-size:14px; }
   .msg.err { color:var(--danger); } .msg.ok { color:var(--ok); }
@@ -28,36 +31,58 @@
   .grid th { background:#eef2f7; padding:6px; position:sticky; top:0; }
   .grid td.time { width:56px; text-align:center; color:var(--muted); padding:4px; }
   .grid td.slot { height:28px; }
+  .grid td.indisp { background:repeating-linear-gradient(45deg,#f1f2f4,#f1f2f4 4px,#e5e7eb 4px,#e5e7eb 8px); }
   .block { background:#dbeafe; border-left:3px solid var(--accent); padding:3px 5px; height:100%; }
   .block b { display:block; }
   table.list { width:100%; border-collapse:collapse; font-size:14px; }
   .list th, .list td { text-align:left; padding:6px; border-bottom:1px solid var(--line); }
   .free { display:inline-block; background:#dcfce7; color:#166534; border-radius:12px; padding:2px 8px; margin:2px; font-size:12px; }
-  .grid td.indisp { background:repeating-linear-gradient(45deg,#f1f2f4,#f1f2f4 4px,#e5e7eb 4px,#e5e7eb 8px); }
   .dia-disp { border-bottom:1px solid var(--line); padding:8px 0; }
   .dia-disp b { display:inline-block; width:80px; }
   .faixa { display:inline-block; background:#eef2f7; border-radius:12px; padding:2px 8px; margin:2px; font-size:13px; }
-  .hidden { display:none; }
+  .hidden { display:none !important; }
   body.modo-professor .so-recepcao, body:not(.modo-professor) .so-professor { display:none !important; }
-  .link-prof { font-size:12px; word-break:break-all; color:var(--muted); }
+  body.modo-online .so-demo, body:not(.modo-online) .so-online { display:none !important; }
+  .detalhe { font-size:12px; word-break:break-all; color:var(--muted); }
+  .tag { font-size:11px; background:#dcfce7; color:#166534; border-radius:10px; padding:1px 6px; }
   .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
-  ul { padding-left:18px; }
+  ul { padding-left:18px; } li { margin-bottom:8px; }
+  #tela-login { max-width:360px; margin:40px auto; }
+  #tela-login label { margin-bottom:10px; }
 </style>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <header>
-  <h1>📅 Agenda de Aulas Particulares</h1>
-  <nav>
+  <h1 id="titulo">📅 Agenda de Aulas Particulares</h1>
+  <nav id="menu" class="hidden">
     <button data-tab="agenda" class="active">Agenda do dia</button>
     <button data-tab="novo" class="so-recepcao">Novo agendamento</button>
     <button data-tab="disp">Disponibilidade</button>
     <button data-tab="cadastros" class="so-recepcao">Cadastros</button>
   </nav>
+  <button id="sair" class="so-online hidden">Sair</button>
 </header>
+<div class="aviso so-demo">Modo exemplo: os dados ficam só neste navegador.</div>
 
 <main>
+  <!-- LOGIN -->
+  <section id="tela-login" class="card hidden">
+    <h3 style="margin-top:0">Entrar</h3>
+    <label>E-mail <input type="email" id="l-email" autocomplete="username"></label>
+    <label>Senha <input type="password" id="l-senha" autocomplete="current-password"></label>
+    <button class="primary" id="entrar">Entrar</button>
+    <div class="msg" id="l-msg"></div>
+  </section>
+
+  <!-- SEM ACESSO -->
+  <section id="sem-acesso" class="card hidden">
+    <p>Seu acesso ainda não foi liberado. Peça para a recepção liberar o seu e-mail.</p>
+  </section>
+
   <!-- AGENDA -->
-  <section id="tab-agenda">
+  <section id="tab-agenda" class="hidden">
     <div class="card row">
       <label>Dia <input type="date" id="dia"></label>
       <label class="so-recepcao">Ver por
@@ -81,9 +106,7 @@
       <div class="row">
         <label>Data <input type="date" id="f-data"></label>
         <label>Início <select id="f-inicio"></select></label>
-        <label>Duração
-          <select id="f-dur"></select>
-        </label>
+        <label>Duração <select id="f-dur"></select></label>
         <label>Aluno <select id="f-aluno"></select></label>
         <label>Professor <select id="f-prof"></select></label>
         <label>Sala <select id="f-sala"></select></label>
@@ -116,50 +139,30 @@
 </main>
 
 <script>
-// ---------- Dados ----------
+const $ = id => document.getElementById(id);
 const hoje = new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso local
-function f(inicio, fim) { return { inicio, fim }; }
-const exemplo = {
-  // disp: horários disponíveis por dia da semana (0 = domingo … 6 = sábado)
-  professores: [
-    {id:1,nome:"Ana (Matemática)",disp:{1:[f("13:00","18:00")],3:[f("13:00","18:00")],5:[f("13:00","18:00")]}},
-    {id:2,nome:"Bruno (Inglês)",disp:{1:[f("14:00","16:00"),f("19:00","22:00")],2:[f("19:00","22:00")],4:[f("19:00","22:00")]}},
-    {id:3,nome:"Carla (Piano)",disp:{2:[f("13:00","22:00")],3:[f("13:00","22:00")],4:[f("13:00","22:00")]}},
-  ],
-  salas: [{id:1,nome:"Sala 1"},{id:2,nome:"Sala 2"},{id:3,nome:"Sala 3"}],
-  alunos: [{id:1,nome:"João"},{id:2,nome:"Maria"},{id:3,nome:"Pedro"},{id:4,nome:"Luiza"}],
-  aulas: [
-    {id:1,data:hoje,inicio:"14:00",fim:"15:30",aluno:3,professor:3,sala:3},
-    {id:2,data:hoje,inicio:"19:00",fim:"20:00",aluno:2,professor:2,sala:1},
-  ],
-};
-const CHAVE = "agenda-db-v2";
-let db;
-try { db = JSON.parse(localStorage.getItem(CHAVE)) || exemplo; } catch { db = exemplo; }
-const salvarDb = () => { try { localStorage.setItem(CHAVE, JSON.stringify(db)); } catch {} };
-const novoId = lista => Math.max(0, ...lista.map(x => x.id)) + 1;
-const nome = (lista, id) => (db[lista].find(x => x.id === id) || {nome:"?"}).nome;
 
-// ---------- Modo professor (link ?professor=ID) ----------
-// Professor só vê as próprias aulas e alunos, e edita a própria disponibilidade.
-const PROF_LOGADO = db.professores.find(p => p.id === Number(new URLSearchParams(location.search).get("professor"))) || null;
-const linkProfessor = id => location.origin + location.pathname + "?professor=" + id;
-
-// ---------- Horários ----------
+// ---------- Horários e regras ----------
 const min = h => { const [a, b] = h.split(":").map(Number); return a * 60 + b; };
 const hhmm = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
 const ABRE = 13 * 60, FECHA = 22 * 60, PASSO = 30; // só tarde e noite
-const DURACAO_MINIMA = 60, DURACAO_MAXIMA = 240; // mínimo 1h, depois de 30 em 30 min
-const SALA_AUTO = 0; // "qualquer sala livre"
+const DURACAO_MINIMA = 60, DURACAO_MAXIMA = 240;   // mínimo 1h, depois de 30 em 30 min
+const SALA_AUTO = 0;                                // "qualquer sala livre"
 const DIAS = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 const diaSemana = data => new Date(data + "T12:00").getDay();
 const horarios = (de, ate) => { const l = []; for (let t = de; t <= ate; t += PASSO) l.push(hhmm(t)); return l; };
-const faixasDoDia = (profId, data) => ((db.professores.find(p => p.id === profId) || {}).disp || {})[diaSemana(data)] || [];
-// O professor está disponível se o horário inteiro cabe numa das faixas dele naquele dia
-const disponivel = (profId, data, inicio, fim) =>
-  faixasDoDia(profId, data).some(r => min(r.inicio) <= min(inicio) && min(fim) <= min(r.fim));
+const faixa = (inicio, fim) => ({ inicio, fim });
 // Dois horários se sobrepõem se um começa antes do outro terminar
 const sobrepoe = (a, b) => min(a.inicio) < min(b.fim) && min(b.inicio) < min(a.fim);
+
+// ---------- Dados em memória ----------
+// db = { professores:[{id,nome,disp:{dia:[{id?,inicio,fim}]},temAcesso}], salas, alunos, aulas:[{id,data,inicio,fim,aluno,professor,sala}] }
+let db = { professores: [], salas: [], alunos: [], aulas: [] };
+let PROF_LOGADO = null; // professor logado (só vê o que é dele); null = recepção
+const nome = (lista, id) => (db[lista].find(x => x.id === id) || { nome: "?" }).nome;
+const faixasDoDia = (profId, data) => ((db.professores.find(p => p.id === profId) || {}).disp || {})[diaSemana(data)] || [];
+const disponivel = (profId, data, inicio, fim) =>
+  faixasDoDia(profId, data).some(r => min(r.inicio) <= min(inicio) && min(fim) <= min(r.fim));
 
 function conflitos(nova) {
   const erros = [];
@@ -172,15 +175,156 @@ function conflitos(nova) {
   return erros;
 }
 
+// =====================================================================
+// Armazenamento: "online" (Supabase) ou "demo" (navegador)
+// Mesmo conjunto de funções nos dois modos.
+// =====================================================================
+const CFG = window.AGENDA_CONFIG || {};
+const MODO_ONLINE = !!(CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase)
+  && new URLSearchParams(location.search).get("demo") === null;
+
+// ----- Modo exemplo (localStorage) -----
+const demo = (() => {
+  const CHAVE = "agenda-db-v2";
+  const exemplo = {
+    professores: [
+      { id: 1, nome: "Ana (Matemática)", disp: { 1: [faixa("13:00","18:00")], 3: [faixa("13:00","18:00")], 5: [faixa("13:00","18:00")] } },
+      { id: 2, nome: "Bruno (Inglês)", disp: { 1: [faixa("14:00","16:00"), faixa("19:00","22:00")], 2: [faixa("19:00","22:00")], 4: [faixa("19:00","22:00")] } },
+      { id: 3, nome: "Carla (Piano)", disp: { 2: [faixa("13:00","22:00")], 3: [faixa("13:00","22:00")], 4: [faixa("13:00","22:00")] } },
+    ],
+    salas: [{ id: 1, nome: "Sala 1" }, { id: 2, nome: "Sala 2" }, { id: 3, nome: "Sala 3" }],
+    alunos: [{ id: 1, nome: "João" }, { id: 2, nome: "Maria" }, { id: 3, nome: "Pedro" }, { id: 4, nome: "Luiza" }],
+    aulas: [
+      { id: 1, data: hoje, inicio: "14:00", fim: "15:30", aluno: 3, professor: 3, sala: 3 },
+      { id: 2, data: hoje, inicio: "19:00", fim: "20:00", aluno: 2, professor: 2, sala: 1 },
+    ],
+  };
+  let dados;
+  try { dados = JSON.parse(localStorage.getItem(CHAVE)) || exemplo; } catch { dados = exemplo; }
+  const salvar = () => { try { localStorage.setItem(CHAVE, JSON.stringify(dados)); } catch {} };
+  const novoId = l => Math.max(0, ...l.map(x => x.id)) + 1;
+  return {
+    async iniciar() {
+      PROF_LOGADO = dados.professores.find(p => p.id === Number(new URLSearchParams(location.search).get("professor"))) || null;
+      return "ok";
+    },
+    async carregar() { db = dados; },
+    async criarAula(f) { dados.aulas.push({ id: novoId(dados.aulas), ...f }); salvar(); },
+    async cancelarAula(id) { dados.aulas = dados.aulas.filter(a => a.id !== id); salvar(); },
+    async adicionar(ent, n) { dados[ent].push({ id: novoId(dados[ent]), nome: n, ...(ent === "professores" ? { disp: {} } : {}) }); salvar(); },
+    async remover(ent, id) {
+      const campo = { professores: "professor", salas: "sala", alunos: "aluno" }[ent];
+      if (dados.aulas.some(a => a[campo] === id)) throw new Error("Existe aula agendada com este cadastro. Cancele as aulas antes.");
+      dados[ent] = dados[ent].filter(x => x.id !== id); salvar();
+    },
+    async addFaixa(profId, dia, nova) {
+      const p = dados.professores.find(x => x.id === profId);
+      p.disp[dia] = [...(p.disp[dia] || []), nova].sort((a, b) => min(a.inicio) - min(b.inicio)); salvar();
+    },
+    async rmFaixa(profId, dia, r) {
+      const p = dados.professores.find(x => x.id === profId);
+      p.disp[dia] = p.disp[dia].filter(x => x !== r); salvar();
+    },
+  };
+})();
+
+// ----- Modo online (Supabase) -----
+const online = (() => {
+  if (!MODO_ONLINE) return null;
+  const sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
+  const hm = t => t.slice(0, 5); // "14:00:00" -> "14:00"
+  // Mensagens amigáveis para os erros do banco
+  const traduzir = e => {
+    const m = (e && e.message) || String(e);
+    if (m.includes("conflito_professor")) return "O professor já tem aula nesse horário.";
+    if (m.includes("conflito_sala")) return "A sala já está ocupada nesse horário.";
+    if (m.includes("conflito_aluno")) return "O aluno já tem aula nesse horário.";
+    if (m.includes("disp_sem_sobreposicao")) return "Esse período se sobrepõe a outro já cadastrado.";
+    if (e && e.code === "23503") return "Não é possível remover: existem aulas (inclusive canceladas) com este cadastro.";
+    if (e && e.code === "42501") return "Você não tem permissão para fazer isso.";
+    return m;
+  };
+  const ok = ({ data, error }) => { if (error) throw new Error(traduzir(error)); return data; };
+  let usuario = null;
+
+  return {
+    sb,
+    async entrar(email, senha) { ok(await sb.auth.signInWithPassword({ email, password: senha })); },
+    async sair() { await sb.auth.signOut(); location.reload(); },
+    async iniciar() {
+      usuario = (await sb.auth.getSession()).data.session?.user || null;
+      if (!usuario) return "login";
+      const perfil = ok(await sb.from("perfis").select("papel").eq("user_id", usuario.id).maybeSingle());
+      if (!perfil) return "sem-acesso";
+      if (perfil.papel === "professor") {
+        const p = ok(await sb.from("professores").select("id,nome").eq("user_id", usuario.id).maybeSingle());
+        if (!p) return "sem-acesso";
+        PROF_LOGADO = p;
+      }
+      return "ok";
+    },
+    async carregar() {
+      // Aulas a partir de 60 dias atrás (o suficiente para a agenda do dia a dia)
+      const desde = new Date(Date.now() - 60 * 864e5).toLocaleDateString("sv-SE");
+      const [ps, ss, as, aus, ds] = await Promise.all([
+        sb.from("professores").select("id,nome,user_id").order("nome"),
+        sb.from("salas").select("id,nome").order("nome"),
+        sb.from("alunos").select("id,nome").order("nome"),
+        sb.from("aulas").select("id,data,inicio,fim,aluno_id,professor_id,sala_id")
+          .neq("status", "cancelada").gte("data", desde),
+        sb.from("disponibilidades").select("id,professor_id,dia_semana,inicio,fim").order("inicio"),
+      ]);
+      const disp = {};
+      ok(ds).forEach(d => {
+        ((disp[d.professor_id] ||= {})[d.dia_semana] ||= []).push({ id: d.id, inicio: hm(d.inicio), fim: hm(d.fim) });
+      });
+      db = {
+        professores: ok(ps).map(p => ({ id: p.id, nome: p.nome, temAcesso: !!p.user_id, disp: disp[p.id] || {} })),
+        salas: ok(ss), alunos: ok(as),
+        aulas: ok(aus).map(a => ({ id: a.id, data: a.data, inicio: hm(a.inicio), fim: hm(a.fim),
+                                   aluno: a.aluno_id, professor: a.professor_id, sala: a.sala_id })),
+      };
+      if (PROF_LOGADO) PROF_LOGADO = db.professores.find(p => p.id === PROF_LOGADO.id) || PROF_LOGADO;
+    },
+    async criarAula(f) {
+      ok(await sb.from("aulas").insert({ data: f.data, inicio: f.inicio, fim: f.fim,
+        aluno_id: f.aluno, professor_id: f.professor, sala_id: f.sala }));
+    },
+    async cancelarAula(id) { ok(await sb.from("aulas").update({ status: "cancelada" }).eq("id", id)); },
+    async adicionar(ent, n) { ok(await sb.from(ent).insert({ nome: n })); },
+    async remover(ent, id) { ok(await sb.from(ent).delete().eq("id", id)); },
+    async addFaixa(profId, dia, nova) {
+      ok(await sb.from("disponibilidades").insert({ professor_id: profId, dia_semana: Number(dia), inicio: nova.inicio, fim: nova.fim }));
+    },
+    async rmFaixa(profId, dia, r) { ok(await sb.from("disponibilidades").delete().eq("id", r.id)); },
+    async darAcesso(profId, email) { ok(await sb.rpc("vincular_professor", { p_professor_id: profId, p_email: email })); },
+  };
+})();
+
+const api = MODO_ONLINE ? online : demo;
+
+// Executa uma alteração, recarrega os dados e redesenha a tela
+async function alterar(acao) {
+  try { await acao(); await api.carregar(); renderTudo(); return true; }
+  catch (e) { alert(e.message); return false; }
+}
+
+// =====================================================================
+// Telas
+// =====================================================================
+
 // ---------- Abas ----------
-document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
-  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x === b));
-  document.querySelectorAll("main > section").forEach(s => s.classList.toggle("hidden", s.id !== "tab-" + b.dataset.tab));
+function mostrarAba(nomeAba) {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x.dataset.tab === nomeAba));
+  document.querySelectorAll("main > section[id^=tab-]").forEach(s => s.classList.toggle("hidden", s.id !== "tab-" + nomeAba));
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = async () => {
+  mostrarAba(b.dataset.tab);
+  if (MODO_ONLINE) { try { await api.carregar(); } catch (e) { alert(e.message); } }
   renderTudo();
 });
 
 // ---------- Agenda ----------
-const $ = id => document.getElementById(id);
 $("dia").value = hoje; $("f-data").value = hoje;
 $("dia").onchange = $("visao").onchange = () => renderAgenda();
 
@@ -190,32 +334,34 @@ function renderAgenda() {
   const aulas = db.aulas.filter(a => a.data === dia && (!PROF_LOGADO || a.professor === PROF_LOGADO.id))
     .sort((a, b) => min(a.inicio) - min(b.inicio));
 
-  let html = "<tr><th></th>" + colunas.map(c => `<th>${c.nome}</th>`).join("") + "</tr>";
-  const ocupado = {}; // células cobertas por rowspan
-  for (let t = ABRE; t < FECHA; t += PASSO) {
-    html += `<tr><td class="time">${t % 60 === 0 ? hhmm(t) : ""}</td>`;
-    colunas.forEach(c => {
-      const chave = c.id + "-" + t;
-      if (ocupado[chave]) return;
-      const aula = aulas.find(a => a[visao] === c.id && min(a.inicio) >= t && min(a.inicio) < t + PASSO);
-      if (aula) {
-        const span = Math.ceil((min(aula.fim) - t) / PASSO);
-        for (let k = 1; k < span; k++) ocupado[c.id + "-" + (t + k * PASSO)] = true;
-        const extra = visao === "sala" ? nome("professores", aula.professor) : nome("salas", aula.sala);
-        html += `<td class="slot" rowspan="${span}"><div class="block"><b>${nome("alunos", aula.aluno)}</b>${extra}<br>${aula.inicio}–${aula.fim}</div></td>`;
-      } else {
-        const indisp = visao === "professor" && !disponivel(c.id, dia, hhmm(t), hhmm(t + PASSO));
-        html += `<td class="slot${indisp ? " indisp" : ""}"></td>`;
-      }
-    });
-    html += "</tr>";
+  if (!PROF_LOGADO) {
+    let html = "<tr><th></th>" + colunas.map(c => `<th>${c.nome}</th>`).join("") + "</tr>";
+    const ocupado = {}; // células cobertas por rowspan
+    for (let t = ABRE; t < FECHA; t += PASSO) {
+      html += `<tr><td class="time">${t % 60 === 0 ? hhmm(t) : ""}</td>`;
+      colunas.forEach(c => {
+        if (ocupado[c.id + "-" + t]) return;
+        const aula = aulas.find(a => a[visao] === c.id && min(a.inicio) >= t && min(a.inicio) < t + PASSO);
+        if (aula) {
+          const span = Math.ceil((min(aula.fim) - t) / PASSO);
+          for (let k = 1; k < span; k++) ocupado[c.id + "-" + (t + k * PASSO)] = true;
+          const extra = visao === "sala" ? nome("professores", aula.professor) : nome("salas", aula.sala);
+          html += `<td class="slot" rowspan="${span}"><div class="block"><b>${nome("alunos", aula.aluno)}</b>${extra}<br>${aula.inicio}–${aula.fim}</div></td>`;
+        } else {
+          const indisp = visao === "professor" && !disponivel(c.id, dia, hhmm(t), hhmm(t + PASSO));
+          html += `<td class="slot${indisp ? " indisp" : ""}"></td>`;
+        }
+      });
+      html += "</tr>";
+    }
+    $("grade").innerHTML = html;
   }
-  $("grade").innerHTML = html;
 
   const linha = (a, comData) => `<tr>${comData ? `<td>${a.data.split("-").reverse().join("/")}</td>` : ""}<td>${a.inicio}–${a.fim}</td><td>${nome("alunos", a.aluno)}</td>` +
     (PROF_LOGADO ? "" : `<td>${nome("professores", a.professor)}</td>`) + `<td>${nome("salas", a.sala)}</td>` +
     (PROF_LOGADO ? "" : `<td><button class="link" data-cancelar="${a.id}">cancelar</button></td>`) + "</tr>";
-  const cab = comData => "<tr>" + (comData ? "<th>Data</th>" : "") + "<th>Horário</th><th>Aluno</th>" + (PROF_LOGADO ? "" : "<th>Professor</th>") + "<th>Sala</th>" + (PROF_LOGADO ? "" : "<th></th>") + "</tr>";
+  const cab = comData => "<tr>" + (comData ? "<th>Data</th>" : "") + "<th>Horário</th><th>Aluno</th>" +
+    (PROF_LOGADO ? "" : "<th>Professor</th>") + "<th>Sala</th>" + (PROF_LOGADO ? "" : "<th></th>") + "</tr>";
   $("lista").innerHTML = aulas.length ? cab(false) + aulas.map(a => linha(a, false)).join("") : "<tr><td>Nenhuma aula neste dia.</td></tr>";
   if (PROF_LOGADO) {
     const prox = db.aulas.filter(a => a.professor === PROF_LOGADO.id && a.data >= hoje)
@@ -223,90 +369,66 @@ function renderAgenda() {
     $("proximas").innerHTML = prox.length ? cab(true) + prox.map(a => linha(a, true)).join("") : "<tr><td>Nenhuma aula agendada.</td></tr>";
   }
   document.querySelectorAll("[data-cancelar]").forEach(b => b.onclick = () => {
-    if (!confirm("Cancelar esta aula?")) return;
-    db.aulas = db.aulas.filter(a => a.id !== Number(b.dataset.cancelar)); salvarDb(); renderAgenda();
+    if (confirm("Cancelar esta aula?")) alterar(() => api.cancelarAula(Number(b.dataset.cancelar)));
   });
 }
 
 // ---------- Novo agendamento ----------
 const opcoes = lista => db[lista].map(x => `<option value="${x.id}">${x.nome}</option>`).join("");
+const rotulo = m => Math.floor(m / 60) + "h" + (m % 60 ? m % 60 : "");
+$("f-dur").innerHTML = horarios(DURACAO_MINIMA, DURACAO_MAXIMA).map(h => `<option value="${min(h)}">${rotulo(min(h))}</option>`).join("");
+$("f-inicio").innerHTML = horarios(ABRE, FECHA - DURACAO_MINIMA).map(h => `<option${h === "14:00" ? " selected" : ""}>${h}</option>`).join("");
+
 function lerForm() {
   const inicio = $("f-inicio").value;
   return { data: $("f-data").value, inicio, fim: hhmm(min(inicio) + Number($("f-dur").value)),
            aluno: Number($("f-aluno").value), professor: Number($("f-prof").value), sala: Number($("f-sala").value) };
 }
-// Durações: 1h, 1h30, 2h, ... até 4h
-const rotulo = m => Math.floor(m / 60) + "h" + (m % 60 ? m % 60 : "");
-let durHtml = "";
-for (let m = DURACAO_MINIMA; m <= DURACAO_MAXIMA; m += PASSO) durHtml += `<option value="${m}">${rotulo(m)}</option>`;
-$("f-dur").innerHTML = durHtml;
-
 const ocupadasNoHorario = f => db.aulas.filter(a => a.data === f.data && sobrepoe(a, f));
 const salasLivres = f => db.salas.filter(s => !ocupadasNoHorario(f).some(a => a.sala === s.id));
 
 function renderLivres() {
-  if (!$("f-inicio").value) return;
-  const f = lerForm();
-  const doHorario = ocupadasNoHorario(f);
-  const livre = (lista, campo) => db[lista].filter(x => !doHorario.some(a => a[campo] === x.id))
-    .map(x => `<span class="free">${x.nome}</span>`).join("") || "<em>nenhum(a)</em>";
-  $("livres").innerHTML = livre("salas", "sala");
+  const f = lerForm(), doHorario = ocupadasNoHorario(f);
+  $("livres").innerHTML = salasLivres(f).map(x => `<span class="free">${x.nome}</span>`).join("") || "<em>nenhuma</em>";
   $("profsLivres").innerHTML = db.professores
     .filter(p => disponivel(p.id, f.data, f.inicio, f.fim) && !doHorario.some(a => a.professor === p.id))
     .map(p => `<span class="free">${p.nome}</span>`).join("") || "<em>nenhum</em>";
 }
 ["f-data", "f-inicio", "f-dur"].forEach(id => $(id).onchange = renderLivres);
-$("f-inicio").innerHTML = horarios(ABRE, FECHA - DURACAO_MINIMA).map(h => `<option${h === "14:00" ? " selected" : ""}>${h}</option>`).join("");
 
-$("salvar").onclick = () => {
+$("salvar").onclick = async () => {
   const f = lerForm(), msg = $("msg");
-  if (!f.data || !f.inicio || !f.aluno || !f.professor) { msg.className = "msg err"; msg.textContent = "Preencha todos os campos."; return; }
+  const erro = t => { msg.className = "msg err"; msg.innerHTML = t; };
+  if (!f.data || !f.inicio || !f.aluno || !f.professor) return erro("Preencha todos os campos.");
   const dur = min(f.fim) - min(f.inicio);
-  if (dur < DURACAO_MINIMA || dur % PASSO) { msg.className = "msg err"; msg.textContent = "A aula deve ter no mínimo 1h, aumentando de 30 em 30 min."; return; }
+  if (dur < DURACAO_MINIMA || dur % PASSO) return erro("A aula deve ter no mínimo 1h, aumentando de 30 em 30 min.");
+  if (min(f.inicio) < ABRE || min(f.fim) > FECHA) return erro(`A aula precisa estar entre ${hhmm(ABRE)} e ${hhmm(FECHA)}.`);
+  if (!disponivel(f.professor, f.data, f.inicio, f.fim)) {
+    const fx = faixasDoDia(f.professor, f.data).map(r => `${r.inicio}–${r.fim}`).join(", ") || "nenhum horário";
+    return erro(`⚠️ ${nome("professores", f.professor)} não está disponível nesse horário. Disponível na ${DIAS[diaSemana(f.data)].toLowerCase()}: ${fx}.`);
+  }
   if (f.sala === SALA_AUTO) {
     const livre = salasLivres(f)[0];
-    if (!livre) { msg.className = "msg err"; msg.textContent = "⚠️ Nenhuma sala livre neste horário."; return; }
+    if (!livre) return erro("⚠️ Nenhuma sala livre neste horário.");
     f.sala = livre.id;
   }
-  if (min(f.inicio) < ABRE || min(f.fim) > FECHA) { msg.className = "msg err"; msg.textContent = `A aula precisa estar entre ${hhmm(ABRE)} e ${hhmm(FECHA)}.`; return; }
-  if (!disponivel(f.professor, f.data, f.inicio, f.fim)) {
-    const faixas = faixasDoDia(f.professor, f.data).map(r => `${r.inicio}–${r.fim}`).join(", ") || "nenhum horário";
-    msg.className = "msg err"; msg.textContent = `⚠️ ${nome("professores", f.professor)} não está disponível nesse horário. Disponível na ${DIAS[diaSemana(f.data)].toLowerCase()}: ${faixas}.`; return;
-  }
   const erros = conflitos(f);
-  if (erros.length) { msg.className = "msg err"; msg.innerHTML = "⚠️ Não foi possível agendar:<br>" + erros.join("<br>"); return; }
-  db.aulas.push({ id: novoId(db.aulas), ...f }); salvarDb();
-  msg.className = "msg ok"; msg.textContent = `✅ Aula agendada: ${f.data} ${f.inicio}–${f.fim}, ${nome("salas", f.sala)}.`;
-  renderLivres();
+  if (erros.length) return erro("⚠️ Não foi possível agendar:<br>" + erros.join("<br>"));
+  $("salvar").disabled = true;
+  try {
+    await api.criarAula(f); await api.carregar();
+    msg.className = "msg ok"; msg.textContent = `✅ Aula agendada: ${f.data.split("-").reverse().join("/")} ${f.inicio}–${f.fim}, ${nome("salas", f.sala)}.`;
+    renderLivres();
+  } catch (e) { erro("⚠️ " + e.message); }
+  finally { $("salvar").disabled = false; }
 };
-
-// ---------- Cadastros ----------
-function renderCadastros() {
-  document.querySelectorAll("[data-entidade]").forEach(card => {
-    const ent = card.dataset.entidade;
-    card.innerHTML = `<h3>${card.querySelector("h3").textContent}</h3>
-      <ul>${db[ent].map(x => `<li>${x.nome} <button class="link" data-del="${x.id}">remover</button>` +
-        (ent === "professores" ? `<br><span class="link-prof">Link do professor: <a href="${linkProfessor(x.id)}">${linkProfessor(x.id)}</a></span>` : "") + "</li>").join("")}</ul>
-      <div class="row"><input placeholder="Nome"><button class="primary">Adicionar</button></div>`;
-    card.querySelector("button.primary").onclick = () => {
-      const inp = card.querySelector("input"), n = inp.value.trim();
-      if (!n) return;
-      db[ent].push({ id: novoId(db[ent]), nome: n, ...(ent === "professores" ? { disp: {} } : {}) }); salvarDb(); renderTudo();
-    };
-    card.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
-      const id = Number(b.dataset.del), campo = {professores:"professor", salas:"sala", alunos:"aluno"}[ent];
-      if (db.aulas.some(a => a[campo] === id)) return alert("Existe aula agendada com este cadastro. Cancele as aulas antes.");
-      db[ent] = db[ent].filter(x => x.id !== id); salvarDb(); renderTudo();
-    });
-  });
-}
 
 // ---------- Disponibilidade ----------
 $("d-prof").onchange = () => renderDisp();
 function renderDisp() {
-  const prof = db.professores.find(p => p.id === Number($("d-prof").value));
+  const prof = PROF_LOGADO ? db.professores.find(p => p.id === PROF_LOGADO.id)
+                           : db.professores.find(p => p.id === Number($("d-prof").value));
   if (!prof) { $("d-dias").innerHTML = "<p>Cadastre um professor primeiro.</p>"; return; }
-  prof.disp = prof.disp || {};
   const opts = (sel, de, ate) => horarios(de, ate).map(h => `<option${h === sel ? " selected" : ""}>${h}</option>`).join("");
   $("d-dias").innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `
     <div class="dia-disp" data-dia="${d}">
@@ -321,36 +443,90 @@ function renderDisp() {
   document.querySelectorAll(".dia-disp").forEach(div => {
     const d = div.dataset.dia;
     div.querySelector(".add").onclick = () => {
-      const nova = f(div.querySelector(".de").value, div.querySelector(".ate").value);
+      const nova = faixa(div.querySelector(".de").value, div.querySelector(".ate").value);
       if (min(nova.fim) - min(nova.inicio) < DURACAO_MINIMA) return alert("O período precisa ter pelo menos 1h.");
-      const lista = prof.disp[d] || [];
-      if (lista.some(r => sobrepoe(r, nova))) return alert("Esse período se sobrepõe a outro já cadastrado.");
-      prof.disp[d] = [...lista, nova].sort((a, b) => min(a.inicio) - min(b.inicio)); salvarDb(); renderDisp();
+      if ((prof.disp[d] || []).some(r => sobrepoe(r, nova))) return alert("Esse período se sobrepõe a outro já cadastrado.");
+      alterar(() => api.addFaixa(prof.id, d, nova));
     };
-    div.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => {
-      prof.disp[d].splice(Number(b.dataset.rm), 1); salvarDb(); renderDisp();
+    div.querySelectorAll("[data-rm]").forEach(b => b.onclick = () =>
+      alterar(() => api.rmFaixa(prof.id, d, prof.disp[d][Number(b.dataset.rm)])));
+  });
+}
+
+// ---------- Cadastros ----------
+const linkDemoProfessor = id => location.origin + location.pathname + "?demo&professor=" + id;
+function renderCadastros() {
+  document.querySelectorAll("[data-entidade]").forEach(card => {
+    const ent = card.dataset.entidade, titulo = card.querySelector("h3").textContent;
+    card.innerHTML = `<h3>${titulo}</h3>
+      <ul>${db[ent].map(x => `<li>${x.nome} <button class="link" data-del="${x.id}">remover</button>` +
+        (ent !== "professores" ? "" : MODO_ONLINE
+          ? `<br>${x.temAcesso ? '<span class="tag">com acesso</span> ' : ""}<span class="row" style="margin-top:4px">
+               <input type="email" placeholder="e-mail do professor" data-email="${x.id}" style="flex:1;min-width:140px">
+               <button class="primary" data-acesso="${x.id}">${x.temAcesso ? "Trocar acesso" : "Dar acesso"}</button></span>`
+          : `<br><span class="detalhe">Link do professor: <a href="${linkDemoProfessor(x.id)}">${linkDemoProfessor(x.id)}</a></span>`) +
+        "</li>").join("")}</ul>
+      <div class="row"><input placeholder="Nome" class="novo-nome"><button class="primary add-ent">Adicionar</button></div>`;
+    card.querySelector(".add-ent").onclick = () => {
+      const n = card.querySelector(".novo-nome").value.trim();
+      if (n) alterar(() => api.adicionar(ent, n));
+    };
+    card.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+      if (confirm("Remover este cadastro?")) alterar(() => api.remover(ent, Number(b.dataset.del)));
+    });
+    card.querySelectorAll("[data-acesso]").forEach(b => b.onclick = async () => {
+      const email = card.querySelector(`[data-email="${b.dataset.acesso}"]`).value.trim();
+      if (!email) return alert("Digite o e-mail do professor.");
+      if (await alterar(() => api.darAcesso(Number(b.dataset.acesso), email))) alert("✅ Acesso liberado para " + email);
     });
   });
 }
 
 function renderTudo() {
-  $("f-aluno").innerHTML = opcoes("alunos");
-  $("f-prof").innerHTML = opcoes("professores");
-  $("f-sala").innerHTML = `<option value="${SALA_AUTO}">Qualquer sala livre</option>` + opcoes("salas");
-  const profSel = $("d-prof").value;
-  $("d-prof").innerHTML = opcoes("professores");
-  if (db.professores.some(p => String(p.id) === profSel)) $("d-prof").value = profSel;
-  renderAgenda(); renderLivres(); renderCadastros(); renderDisp();
+  if (!PROF_LOGADO) {
+    const keep = (id, html) => { const v = $(id).value; $(id).innerHTML = html; if ([...$(id).options].some(o => o.value === v)) $(id).value = v; };
+    keep("f-aluno", opcoes("alunos"));
+    keep("f-prof", opcoes("professores"));
+    keep("f-sala", `<option value="${SALA_AUTO}">Qualquer sala livre</option>` + opcoes("salas"));
+    keep("d-prof", opcoes("professores"));
+    renderLivres(); renderCadastros();
+  }
+  renderAgenda(); renderDisp();
 }
-if (PROF_LOGADO) {
-  document.body.classList.add("modo-professor");
-  document.querySelector("header h1").textContent = "📅 Olá, " + PROF_LOGADO.nome;
-  document.querySelector('[data-tab="agenda"]').textContent = "Minhas aulas";
-  document.querySelector('[data-tab="disp"]').textContent = "Minha disponibilidade";
-  $("titulo-lista").textContent = "Aulas do dia";
+
+// =====================================================================
+// Início
+// =====================================================================
+async function iniciar() {
+  if (MODO_ONLINE) document.body.classList.add("modo-online");
+  let estado;
+  try { estado = await api.iniciar(); } catch (e) { alert(e.message); estado = "login"; }
+  if (MODO_ONLINE) $("sair").classList.toggle("hidden", estado === "login");
+  if (estado === "login") return $("tela-login").classList.remove("hidden");
+  if (estado === "sem-acesso") return $("sem-acesso").classList.remove("hidden");
+
+  if (PROF_LOGADO) {
+    document.body.classList.add("modo-professor");
+    $("titulo").textContent = "📅 Olá, " + PROF_LOGADO.nome;
+    document.querySelector('[data-tab="agenda"]').textContent = "Minhas aulas";
+    document.querySelector('[data-tab="disp"]').textContent = "Minha disponibilidade";
+    $("titulo-lista").textContent = "Aulas do dia";
+  }
+  try { await api.carregar(); } catch (e) { alert(e.message); }
+  $("menu").classList.remove("hidden");
+  mostrarAba("agenda");
+  renderTudo();
 }
-renderTudo();
-if (PROF_LOGADO) { $("d-prof").value = PROF_LOGADO.id; renderDisp(); }
+
+$("entrar").onclick = async () => {
+  const msg = $("l-msg");
+  try { await online.entrar($("l-email").value.trim(), $("l-senha").value); location.reload(); }
+  catch (e) { msg.className = "msg err"; msg.textContent = "E-mail ou senha incorretos."; }
+};
+$("l-senha").onkeydown = e => { if (e.key === "Enter") $("entrar").click(); };
+$("sair").onclick = () => online.sair();
+
+iniciar();
 </script>
 </body>
 </html>

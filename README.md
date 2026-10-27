@@ -60,36 +60,40 @@ Professor 1 ──< Aula >── 1 Aluno
 | **Recepção** | Tudo: agenda completa, agendar/cancelar aulas, cadastros |
 | **Professor** | Só **as próprias aulas e os alunos agendados com ele**, e editar a **própria disponibilidade**. Não agenda, não cancela e não vê outros professores |
 
-## 5. Protótipo
+## 5. Sistema
 
-O arquivo [`index.html`](index.html) é um protótipo funcional, sem instalação:
-basta abrir no navegador. Os dados ficam salvos no próprio navegador
-(localStorage) e vêm alguns exemplos pré-carregados.
+Site estático ([`index.html`](index.html)) hospedado no GitHub Pages + banco de dados
+**Supabase** (PostgreSQL com login).
 
-**Exemplo online (GitHub Pages):** https://tfmachado19.github.io/Agendamentos/
-- Recepção: abre o link normal.
-- Professor: abre o link com `?professor=ID`, ex.: https://tfmachado19.github.io/Agendamentos/?professor=1
-  (o link de cada professor aparece na aba Cadastros).
+- **Sistema:** https://tfmachado19.github.io/Agendamentos/ — tela de login (recepção ou professor).
+- **Exemplo sem banco:** https://tfmachado19.github.io/Agendamentos/?demo — dados só no navegador.
+  Professor no exemplo: `?demo&professor=1`.
 
-> ⚠️ É só um exemplo: os dados ficam no navegador de cada pessoa, então o professor
-> **não** vê as aulas que a recepção marcou em outro computador. Isso só funciona
-> no sistema real (fase 2), com banco de dados e login.
+Enquanto o [`config.js`](config.js) estiver vazio, o site abre direto no modo exemplo.
+Para ligar o banco, siga [`supabase/COMO-CONFIGURAR.md`](supabase/COMO-CONFIGURAR.md).
 
-Já implementado no protótipo:
-- Agenda do dia por **sala** ou por **professor** (horários indisponíveis do professor aparecem hachurados)
-- Tela de disponibilidade por professor e bloqueio de agendamento fora dela
-- Modo professor (link próprio): vê só as aulas e alunos dele e edita a própria disponibilidade
-- Cadastro de aulas com verificação de conflito (professor, sala e aluno)
-- Lista de salas livres no horário escolhido e opção "Qualquer sala livre"
-- Lista do dia e cancelamento de aulas
-- Cadastro simples de professores, salas e alunos
+### Banco de dados ([`supabase/schema.sql`](supabase/schema.sql))
+As regras são garantidas **pelo próprio banco**, mesmo que alguém tente burlar o site:
+- Sem conflito de professor, sala ou aluno no mesmo horário (aulas canceladas não contam)
+- Aulas só entre 13h e 22h, mínimo 1h, de 30 em 30 min
+- Aula só dentro da disponibilidade do professor
+- Professor só vê as próprias aulas e os alunos delas, e só altera a própria disponibilidade
+- Aula cancelada não é apagada (fica o histórico)
+
+### Telas
+- Login (recepção / professor)
+- Agenda do dia por **sala** ou por **professor** (horários indisponíveis hachurados)
+- Novo agendamento com verificação de conflito, salas/professores livres e "Qualquer sala livre"
+- Disponibilidade por professor
+- Cadastros, incluindo **Dar acesso** ao professor pelo e-mail
+- Modo professor: Minhas aulas + Minha disponibilidade
 
 ## 6. Próximos passos (roadmap)
 
 | Fase | O que entra |
 |------|-------------|
-| 1. MVP (protótipo) | Tudo da seção 5 ✅ |
-| 2. Sistema real | Banco de dados (ex.: PostgreSQL/Supabase), login, acesso de vários computadores |
+| 1. MVP (protótipo) | Agenda, conflitos, disponibilidade ✅ |
+| 2. Sistema real | Banco de dados (Supabase), login, acesso de vários computadores ✅ |
 | 3. Recorrência | Aulas semanais fixas (ex.: toda terça 14h), feriados |
 | 4. Comunicação | Lembrete por WhatsApp/e-mail para aluno e professor |
 | 5. Gestão | Relatório de aulas por professor (para pagamento), faltas, ocupação das salas |
