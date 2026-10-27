@@ -71,10 +71,7 @@
         <label>Data <input type="date" id="f-data"></label>
         <label>Início <input type="time" id="f-inicio" step="1800" value="14:00"></label>
         <label>Duração
-          <select id="f-dur">
-            <option value="60" selected>1h</option><option value="90">1h30</option><option value="120">2h</option>
-            <option value="150">2h30</option><option value="180">3h</option>
-          </select>
+          <select id="f-dur"></select>
         </label>
         <label>Aluno <select id="f-aluno"></select></label>
         <label>Professor <select id="f-prof"></select></label>
@@ -120,7 +117,8 @@ const nome = (lista, id) => (db[lista].find(x => x.id === id) || {nome:"?"}).nom
 const min = h => { const [a, b] = h.split(":").map(Number); return a * 60 + b; };
 const hhmm = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
 const ABRE = 7 * 60, FECHA = 22 * 60, PASSO = 30;
-const DURACAO_MINIMA = 60; // aulas têm no mínimo 1h
+const DURACAO_MINIMA = 60, DURACAO_MAXIMA = 240; // mínimo 1h, depois de 30 em 30 min
+const SALA_AUTO = 0; // "qualquer sala livre"
 // Dois horários se sobrepõem se um começa antes do outro terminar
 const sobrepoe = (a, b) => min(a.inicio) < min(b.fim) && min(b.inicio) < min(a.fim);
 
@@ -188,10 +186,19 @@ function lerForm() {
   return { data: $("f-data").value, inicio, fim: hhmm(min(inicio) + Number($("f-dur").value)),
            aluno: Number($("f-aluno").value), professor: Number($("f-prof").value), sala: Number($("f-sala").value) };
 }
+// Durações: 1h, 1h30, 2h, ... até 4h
+const rotulo = m => Math.floor(m / 60) + "h" + (m % 60 ? m % 60 : "");
+let durHtml = "";
+for (let m = DURACAO_MINIMA; m <= DURACAO_MAXIMA; m += PASSO) durHtml += `<option value="${m}">${rotulo(m)}</option>`;
+$("f-dur").innerHTML = durHtml;
+
+const ocupadasNoHorario = f => db.aulas.filter(a => a.data === f.data && sobrepoe(a, f));
+const salasLivres = f => db.salas.filter(s => !ocupadasNoHorario(f).some(a => a.sala === s.id));
+
 function renderLivres() {
   if (!$("f-inicio").value) return;
   const f = lerForm();
-  const doHorario = db.aulas.filter(a => a.data === f.data && sobrepoe(a, f));
+  const doHorario = ocupadasNoHorario(f);
   const livre = (lista, campo) => db[lista].filter(x => !doHorario.some(a => a[campo] === x.id))
     .map(x => `<span class="free">${x.nome}</span>`).join("") || "<em>nenhum(a)</em>";
   $("livres").innerHTML = livre("salas", "sala");
@@ -201,13 +208,19 @@ function renderLivres() {
 
 $("salvar").onclick = () => {
   const f = lerForm(), msg = $("msg");
-  if (!f.data || !f.inicio || !f.aluno || !f.professor || !f.sala) { msg.className = "msg err"; msg.textContent = "Preencha todos os campos."; return; }
-  if (min(f.fim) - min(f.inicio) < DURACAO_MINIMA) { msg.className = "msg err"; msg.textContent = "A aula deve ter no mínimo 1h."; return; }
+  if (!f.data || !f.inicio || !f.aluno || !f.professor) { msg.className = "msg err"; msg.textContent = "Preencha todos os campos."; return; }
+  const dur = min(f.fim) - min(f.inicio);
+  if (dur < DURACAO_MINIMA || dur % PASSO) { msg.className = "msg err"; msg.textContent = "A aula deve ter no mínimo 1h, aumentando de 30 em 30 min."; return; }
+  if (f.sala === SALA_AUTO) {
+    const livre = salasLivres(f)[0];
+    if (!livre) { msg.className = "msg err"; msg.textContent = "⚠️ Nenhuma sala livre neste horário."; return; }
+    f.sala = livre.id;
+  }
   if (min(f.fim) > FECHA) { msg.className = "msg err"; msg.textContent = "A aula termina depois do horário de funcionamento."; return; }
   const erros = conflitos(f);
   if (erros.length) { msg.className = "msg err"; msg.innerHTML = "⚠️ Não foi possível agendar:<br>" + erros.join("<br>"); return; }
   db.aulas.push({ id: novoId(db.aulas), ...f }); salvarDb();
-  msg.className = "msg ok"; msg.textContent = `✅ Aula agendada: ${f.data} ${f.inicio}–${f.fim}.`;
+  msg.className = "msg ok"; msg.textContent = `✅ Aula agendada: ${f.data} ${f.inicio}–${f.fim}, ${nome("salas", f.sala)}.`;
   renderLivres();
 };
 
@@ -234,7 +247,7 @@ function renderCadastros() {
 function renderTudo() {
   $("f-aluno").innerHTML = opcoes("alunos");
   $("f-prof").innerHTML = opcoes("professores");
-  $("f-sala").innerHTML = opcoes("salas");
+  $("f-sala").innerHTML = `<option value="${SALA_AUTO}">Qualquer sala livre</option>` + opcoes("salas");
   renderAgenda(); renderLivres(); renderCadastros();
 }
 renderTudo();

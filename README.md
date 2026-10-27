@@ -15,7 +15,7 @@ fiquem com dois horários ao mesmo tempo**.
 | Entidade      | Campos principais                                                      |
 |---------------|------------------------------------------------------------------------|
 | **Professor** | id, nome, disciplinas, telefone, disponibilidade (dias/horários)       |
-| **Sala**      | id, nome, capacidade, recursos (quadro, TV, piano…)                    |
+| **Sala**      | id, nome                                                               |
 | **Aluno**     | id, nome, responsável, telefone, observações                           |
 | **Aula**      | id, data, hora início, hora fim, aluno, professor, sala, disciplina, status (agendada / realizada / cancelada / falta) |
 
@@ -33,10 +33,12 @@ Professor 1 ──< Aula >── 1 Aluno
 3. **Sem conflito de aluno**: um aluno não pode estar em duas aulas ao mesmo tempo.
 4. Dois horários se sobrepõem quando `inicioA < fimB` **e** `inicioB < fimA`
    (uma aula que termina 10:00 e outra que começa 10:00 **não** conflitam).
-5. **Duração mínima de 1h** por aula (opções: 1h, 1h30, 2h, 2h30, 3h).
+5. **Duração mínima de 1h**, aumentando de 30 em 30 min (1h, 1h30, 2h, … até 4h).
+   **Aulas individuais**: um aluno por aula (não há aulas em grupo).
+   **Qualquer sala serve** (não há sala específica): o sistema pode escolher sozinho uma sala livre.
 6. Aulas canceladas liberam professor e sala.
 7. Ao escolher data/horário, o sistema **sugere só as salas e professores livres**.
-8. (Futuro) Respeitar a disponibilidade cadastrada do professor e recursos da sala.
+8. (Futuro) Respeitar a disponibilidade cadastrada do professor.
 
 ## 4. Telas
 
@@ -56,7 +58,7 @@ basta abrir no navegador. Os dados ficam salvos no próprio navegador
 Já implementado no protótipo:
 - Agenda do dia por **sala** ou por **professor**
 - Cadastro de aulas com verificação de conflito (professor, sala e aluno)
-- Lista de salas livres no horário escolhido
+- Lista de salas livres no horário escolhido e opção "Qualquer sala livre"
 - Lista do dia e cancelamento de aulas
 - Cadastro simples de professores, salas e alunos
 
@@ -72,8 +74,8 @@ Já implementado no protótipo:
 
 ## 7. Perguntas em aberto
 
-- ~~Duração das aulas~~ → definido: mínimo de 1h.
+- ~~Duração das aulas~~ → definido: mínimo de 1h, de 30 em 30 min.
 - Horário de funcionamento (o protótipo usa 07h–22h).
-- Alguma aula precisa de sala com recurso específico (ex.: piano)?
-- Aulas em grupo (mais de um aluno) existem?
+- ~~Sala específica~~ → definido: qualquer sala serve.
+- ~~Aulas em grupo~~ → definido: só aulas individuais.
 - Quem vai usar: só a recepção, ou professores também?
