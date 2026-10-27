@@ -15,7 +15,7 @@
   nav button, #sair { background:transparent; color:#fff; border:1px solid #fff6; border-radius:6px; padding:6px 10px; cursor:pointer; }
   nav button.active { background:#fff; color:var(--accent); }
   .aviso { background:#fef3c7; color:#92400e; padding:8px 16px; font-size:13px; }
-  main { padding:16px; max-width:1200px; margin:auto; }
+  main { padding:16px; max-width:1600px; margin:auto; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
   .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
   label { display:flex; flex-direction:column; font-size:13px; color:var(--muted); gap:4px; }
@@ -47,6 +47,25 @@
   .tag { font-size:11px; background:#dcfce7; color:#166534; border-radius:10px; padding:1px 6px; }
   .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
   ul { padding-left:18px; } li { margin-bottom:8px; }
+  /* Agenda semanal */
+  table.semana { min-width:900px; }
+  .semana th { font-size:12px; white-space:nowrap; }
+  .semana th.sub { font-weight:500; color:var(--muted); top:29px; }
+  .semana .ini-dia { border-left:2px solid #b6bfcc; }
+  .semana th.hoje { background:#dbeafe; color:var(--accent); }
+  .semana td.time { position:sticky; left:0; background:var(--card); z-index:1; font-size:11px; }
+  .semana th.time { position:sticky; left:0; z-index:3; }
+  .semana td.slot { min-width:62px; height:26px; }
+  .semana td.livre { cursor:pointer; }
+  .semana td.livre:hover { background:#eff6ff; }
+  .semana td.livre:hover::after { content:"+"; color:var(--accent); display:block; text-align:center; line-height:24px; }
+  .semana .block { font-size:11px; cursor:pointer; overflow:hidden; }
+  .semana-nav { align-items:center; }
+  .semana-nav strong { min-width:150px; text-align:center; }
+  dialog { border:0; border-radius:12px; padding:20px; width:min(92vw,380px); }
+  dialog::backdrop { background:#0006; }
+  dialog label { margin-bottom:10px; }
+  .legenda { font-size:12px; color:var(--muted); margin:0 0 8px; }
   #tela-login { max-width:360px; margin:40px auto; }
   #tela-login label { margin-bottom:10px; }
 </style>
@@ -57,7 +76,7 @@
 <header>
   <h1 id="titulo">📅 Agenda de Aulas Particulares</h1>
   <nav id="menu" class="hidden">
-    <button data-tab="agenda" class="active">Agenda do dia</button>
+    <button data-tab="agenda" class="active">Agenda da semana</button>
     <button data-tab="novo" class="so-recepcao">Novo agendamento</button>
     <button data-tab="disp">Disponibilidade</button>
     <button data-tab="cadastros" class="so-recepcao">Cadastros</button>
@@ -83,14 +102,24 @@
 
   <!-- AGENDA -->
   <section id="tab-agenda" class="hidden">
-    <div class="card row">
-      <label>Dia <input type="date" id="dia"></label>
-      <label class="so-recepcao">Ver por
-        <select id="visao"><option value="sala">Sala</option><option value="professor">Professor</option></select>
-      </label>
+    <!-- Recepção: agenda semanal, cada dia dividido em salas -->
+    <div class="card row semana-nav so-recepcao">
+      <button class="primary" id="sem-ant" aria-label="Semana anterior">‹</button>
+      <strong id="sem-titulo"></strong>
+      <button class="primary" id="sem-prox" aria-label="Próxima semana">›</button>
+      <button class="primary" id="sem-hoje">Hoje</button>
     </div>
-    <div class="card grid-wrap so-recepcao"><table class="grid" id="grade"></table></div>
-    <div class="card">
+    <div class="card so-recepcao">
+      <p class="legenda">Toque num horário vazio de uma sala para agendar. Toque numa aula para ver ou cancelar.
+        Horários hachurados: nenhum professor disponível.</p>
+      <div class="grid-wrap"><table class="grid semana" id="grade"></table></div>
+    </div>
+
+    <!-- Professor: lista das próprias aulas -->
+    <div class="card row so-professor">
+      <label>Dia <input type="date" id="dia"></label>
+    </div>
+    <div class="card so-professor">
       <h3 style="margin-top:0" id="titulo-lista">Lista do dia</h3>
       <table class="list" id="lista"></table>
     </div>
@@ -138,6 +167,18 @@
   </section>
 </main>
 
+<dialog id="dlg">
+  <h3 style="margin-top:0" id="dlg-titulo"></h3>
+  <label>Aluno <select id="g-aluno"></select></label>
+  <label>Duração <select id="g-dur"></select></label>
+  <label>Professor <select id="g-prof"></select></label>
+  <div class="msg" id="g-msg"></div>
+  <div class="row" style="margin-top:12px">
+    <button class="primary" id="g-salvar">Agendar</button>
+    <button class="primary" id="g-fechar" style="background:#6b7280">Fechar</button>
+  </div>
+</dialog>
+
 <script>
 const $ = id => document.getElementById(id);
 const hoje = new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso local
@@ -152,6 +193,9 @@ const DIAS = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 const diaSemana = data => new Date(data + "T12:00").getDay();
 const horarios = (de, ate) => { const l = []; for (let t = de; t <= ate; t += PASSO) l.push(hhmm(t)); return l; };
 const faixa = (inicio, fim) => ({ inicio, fim });
+const addDias = (data, n) => { const x = new Date(data + "T12:00"); x.setDate(x.getDate() + n); return x.toLocaleDateString("sv-SE"); };
+const inicioSemana = data => addDias(data, -diaSemana(data)); // domingo
+const ddmm = data => data.split("-").reverse().slice(0, 2).join("/");
 // Dois horários se sobrepõem se um começa antes do outro terminar
 const sobrepoe = (a, b) => min(a.inicio) < min(b.fim) && min(b.inicio) < min(a.fim);
 
@@ -163,6 +207,20 @@ const nome = (lista, id) => (db[lista].find(x => x.id === id) || { nome: "?" }).
 const faixasDoDia = (profId, data) => ((db.professores.find(p => p.id === profId) || {}).disp || {})[diaSemana(data)] || [];
 const disponivel = (profId, data, inicio, fim) =>
   faixasDoDia(profId, data).some(r => min(r.inicio) <= min(inicio) && min(fim) <= min(r.fim));
+
+// Confere todas as regras; devolve a mensagem de erro ou null
+function validar(f) {
+  if (!f.data || !f.inicio || !f.aluno || !f.professor || !f.sala) return "Preencha todos os campos.";
+  const dur = min(f.fim) - min(f.inicio);
+  if (dur < DURACAO_MINIMA || dur % PASSO) return "A aula deve ter no mínimo 1h, aumentando de 30 em 30 min.";
+  if (min(f.inicio) < ABRE || min(f.fim) > FECHA) return `A aula precisa estar entre ${hhmm(ABRE)} e ${hhmm(FECHA)}.`;
+  if (!disponivel(f.professor, f.data, f.inicio, f.fim)) {
+    const fx = faixasDoDia(f.professor, f.data).map(r => `${r.inicio}–${r.fim}`).join(", ") || "nenhum horário";
+    return `⚠️ ${nome("professores", f.professor)} não está disponível nesse horário. Disponível na ${DIAS[diaSemana(f.data)].toLowerCase()}: ${fx}.`;
+  }
+  const erros = conflitos(f);
+  return erros.length ? "⚠️ Não foi possível agendar:<br>" + erros.join("<br>") : null;
+}
 
 function conflitos(nova) {
   const erros = [];
@@ -326,36 +384,104 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = async () => {
 
 // ---------- Agenda ----------
 $("dia").value = hoje; $("f-data").value = hoje;
-$("dia").onchange = $("visao").onchange = () => renderAgenda();
+$("dia").onchange = () => renderAgenda();
 
-function renderAgenda() {
-  const dia = $("dia").value, visao = $("visao").value;
-  const colunas = visao === "sala" ? db.salas : db.professores;
-  const aulas = db.aulas.filter(a => a.data === dia && (!PROF_LOGADO || a.professor === PROF_LOGADO.id))
-    .sort((a, b) => min(a.inicio) - min(b.inicio));
+// ----- Agenda semanal (recepção): domingo a sábado, cada dia dividido em salas -----
+let semanaIni = inicioSemana(hoje);
+$("sem-ant").onclick = () => { semanaIni = addDias(semanaIni, -7); renderSemana(); };
+$("sem-prox").onclick = () => { semanaIni = addDias(semanaIni, 7); renderSemana(); };
+$("sem-hoje").onclick = () => { semanaIni = inicioSemana(hoje); renderSemana(); };
 
-  if (!PROF_LOGADO) {
-    let html = "<tr><th></th>" + colunas.map(c => `<th>${c.nome}</th>`).join("") + "</tr>";
-    const ocupado = {}; // células cobertas por rowspan
-    for (let t = ABRE; t < FECHA; t += PASSO) {
-      html += `<tr><td class="time">${t % 60 === 0 ? hhmm(t) : ""}</td>`;
-      colunas.forEach(c => {
-        if (ocupado[c.id + "-" + t]) return;
-        const aula = aulas.find(a => a[visao] === c.id && min(a.inicio) >= t && min(a.inicio) < t + PASSO);
-        if (aula) {
-          const span = Math.ceil((min(aula.fim) - t) / PASSO);
-          for (let k = 1; k < span; k++) ocupado[c.id + "-" + (t + k * PASSO)] = true;
-          const extra = visao === "sala" ? nome("professores", aula.professor) : nome("salas", aula.sala);
-          html += `<td class="slot" rowspan="${span}"><div class="block"><b>${nome("alunos", aula.aluno)}</b>${extra}<br>${aula.inicio}–${aula.fim}</div></td>`;
-        } else {
-          const indisp = visao === "professor" && !disponivel(c.id, dia, hhmm(t), hhmm(t + PASSO));
-          html += `<td class="slot${indisp ? " indisp" : ""}"></td>`;
-        }
-      });
-      html += "</tr>";
-    }
-    $("grade").innerHTML = html;
+// Professores com disponibilidade e sem aula num horário
+const profsLivres = f => db.professores.filter(p =>
+  disponivel(p.id, f.data, f.inicio, f.fim) && !ocupadasNoHorario(f).some(a => a.professor === p.id));
+
+function renderSemana() {
+  const dias = [0, 1, 2, 3, 4, 5, 6].map(i => addDias(semanaIni, i));
+  $("sem-titulo").textContent = `${ddmm(dias[0])} a ${ddmm(dias[6])}`;
+  const salas = db.salas;
+  if (!salas.length) { $("grade").innerHTML = "<tr><td style='padding:12px'>Cadastre as salas na aba Cadastros.</td></tr>"; return; }
+
+  let html = `<tr><th class="time" rowspan="2"></th>` + dias.map(d =>
+    `<th colspan="${salas.length}" class="ini-dia${d === hoje ? " hoje" : ""}">${DIAS[diaSemana(d)]} ${ddmm(d)}</th>`).join("") + "</tr><tr>" +
+    dias.map(() => salas.map((s, i) => `<th class="sub${i === 0 ? " ini-dia" : ""}">${s.nome}</th>`).join("")).join("") + "</tr>";
+
+  const coberto = {}; // células já ocupadas por uma aula de mais de 30 min (rowspan)
+  for (let t = ABRE; t < FECHA; t += PASSO) {
+    html += `<tr><td class="time">${hhmm(t)}</td>`;
+    dias.forEach(d => salas.forEach((s, i) => {
+      const chave = `${d}-${s.id}-${t}`, borda = i === 0 ? " ini-dia" : "";
+      if (coberto[chave]) return;
+      const aula = db.aulas.find(a => a.data === d && a.sala === s.id && min(a.inicio) >= t && min(a.inicio) < t + PASSO);
+      if (aula) {
+        const span = Math.ceil((min(aula.fim) - t) / PASSO);
+        for (let k = 1; k < span; k++) coberto[`${d}-${s.id}-${t + k * PASSO}`] = true;
+        html += `<td class="slot${borda}" rowspan="${span}"><div class="block" data-aula="${aula.id}" title="${nome("alunos", aula.aluno)} · ${nome("professores", aula.professor)} · ${aula.inicio}–${aula.fim}">` +
+                `<b>${nome("alunos", aula.aluno)}</b>${nome("professores", aula.professor)}</div></td>`;
+      } else {
+        const meia = { data: d, inicio: hhmm(t), fim: hhmm(t + PASSO) };
+        html += profsLivres(meia).length
+          ? `<td class="slot livre${borda}" data-d="${d}" data-t="${hhmm(t)}" data-s="${s.id}"></td>`
+          : `<td class="slot indisp${borda}" title="Nenhum professor disponível"></td>`;
+      }
+    }));
+    html += "</tr>";
   }
+  $("grade").innerHTML = html;
+  // No celular, rola a grade até o dia de hoje
+  const th = $("grade").querySelector("th.hoje"), wrap = $("grade").parentElement;
+  wrap.scrollLeft = th ? th.offsetLeft - $("grade").querySelector("td.time").offsetWidth : 0;
+}
+
+$("grade").onclick = e => {
+  const bloco = e.target.closest("[data-aula]");
+  if (bloco) {
+    const a = db.aulas.find(x => x.id === Number(bloco.dataset.aula));
+    const txt = `${nome("alunos", a.aluno)} com ${nome("professores", a.professor)}\n` +
+                `${DIAS[diaSemana(a.data)]} ${ddmm(a.data)}, ${a.inicio}–${a.fim}, ${nome("salas", a.sala)}\n\nCancelar esta aula?`;
+    if (confirm(txt)) alterar(() => api.cancelarAula(a.id));
+    return;
+  }
+  const cel = e.target.closest("td.livre");
+  if (cel) abrirAgendar(cel.dataset.d, cel.dataset.t, Number(cel.dataset.s));
+};
+
+// ----- Agendar direto pela grade -----
+let alvo = null; // { data, inicio, sala }
+function abrirAgendar(data, inicio, sala) {
+  alvo = { data, inicio, sala };
+  $("dlg-titulo").textContent = `${DIAS[diaSemana(data)]} ${ddmm(data)} · ${inicio} · ${nome("salas", sala)}`;
+  $("g-aluno").innerHTML = opcoes("alunos");
+  $("g-dur").innerHTML = horarios(DURACAO_MINIMA, DURACAO_MAXIMA).map(min)
+    .filter(m => min(inicio) + m <= FECHA).map(m => `<option value="${m}">${rotulo(m)}</option>`).join("");
+  $("g-msg").textContent = "";
+  atualizarProfsDlg();
+  $("dlg").showModal();
+}
+const formDlg = () => ({ ...alvo, fim: hhmm(min(alvo.inicio) + Number($("g-dur").value)),
+                         aluno: Number($("g-aluno").value), professor: Number($("g-prof").value) });
+function atualizarProfsDlg() {
+  const livres = profsLivres(formDlg());
+  $("g-prof").innerHTML = livres.length ? livres.map(p => `<option value="${p.id}">${p.nome}</option>`).join("")
+                                        : `<option value="">Nenhum professor disponível</option>`;
+}
+$("g-dur").onchange = atualizarProfsDlg;
+$("g-fechar").onclick = () => $("dlg").close();
+$("g-salvar").onclick = async () => {
+  const f = formDlg(), msg = $("g-msg"), erro = validar(f);
+  if (erro) { msg.className = "msg err"; msg.innerHTML = erro; return; }
+  $("g-salvar").disabled = true;
+  try { await api.criarAula(f); await api.carregar(); $("dlg").close(); renderTudo(); }
+  catch (e) { msg.className = "msg err"; msg.textContent = "⚠️ " + e.message; }
+  finally { $("g-salvar").disabled = false; }
+};
+
+// ----- Lista (professor) -----
+function renderAgenda() {
+  if (!PROF_LOGADO) return renderSemana();
+  const dia = $("dia").value;
+  const aulas = db.aulas.filter(a => a.data === dia && a.professor === PROF_LOGADO.id)
+    .sort((a, b) => min(a.inicio) - min(b.inicio));
 
   const linha = (a, comData) => `<tr>${comData ? `<td>${a.data.split("-").reverse().join("/")}</td>` : ""}<td>${a.inicio}–${a.fim}</td><td>${nome("alunos", a.aluno)}</td>` +
     (PROF_LOGADO ? "" : `<td>${nome("professores", a.professor)}</td>`) + `<td>${nome("salas", a.sala)}</td>` +
@@ -399,21 +525,13 @@ function renderLivres() {
 $("salvar").onclick = async () => {
   const f = lerForm(), msg = $("msg");
   const erro = t => { msg.className = "msg err"; msg.innerHTML = t; };
-  if (!f.data || !f.inicio || !f.aluno || !f.professor) return erro("Preencha todos os campos.");
-  const dur = min(f.fim) - min(f.inicio);
-  if (dur < DURACAO_MINIMA || dur % PASSO) return erro("A aula deve ter no mínimo 1h, aumentando de 30 em 30 min.");
-  if (min(f.inicio) < ABRE || min(f.fim) > FECHA) return erro(`A aula precisa estar entre ${hhmm(ABRE)} e ${hhmm(FECHA)}.`);
-  if (!disponivel(f.professor, f.data, f.inicio, f.fim)) {
-    const fx = faixasDoDia(f.professor, f.data).map(r => `${r.inicio}–${r.fim}`).join(", ") || "nenhum horário";
-    return erro(`⚠️ ${nome("professores", f.professor)} não está disponível nesse horário. Disponível na ${DIAS[diaSemana(f.data)].toLowerCase()}: ${fx}.`);
-  }
   if (f.sala === SALA_AUTO) {
     const livre = salasLivres(f)[0];
     if (!livre) return erro("⚠️ Nenhuma sala livre neste horário.");
     f.sala = livre.id;
   }
-  const erros = conflitos(f);
-  if (erros.length) return erro("⚠️ Não foi possível agendar:<br>" + erros.join("<br>"));
+  const problema = validar(f);
+  if (problema) return erro(problema);
   $("salvar").disabled = true;
   try {
     await api.criarAula(f); await api.carregar();

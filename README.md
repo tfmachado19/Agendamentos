@@ -82,7 +82,9 @@ As regras são garantidas **pelo próprio banco**, mesmo que alguém tente burla
 
 ### Telas
 - Login (recepção / professor)
-- Agenda do dia por **sala** ou por **professor** (horários indisponíveis hachurados)
+- **Agenda da semana** (domingo a sábado), de 30 em 30 min, com **cada dia dividido em uma coluna por sala**.
+  Toque num horário vazio de uma sala para agendar ali; toque numa aula para cancelar.
+  Horários sem nenhum professor disponível aparecem hachurados.
 - Novo agendamento com verificação de conflito, salas/professores livres e "Qualquer sala livre"
 - Disponibilidade por professor
 - Cadastros, incluindo **Dar acesso** ao professor pelo e-mail
