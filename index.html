@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agenda de Aulas</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#6b7280; --line:#e3e6eb;
+          --accent:#2563eb; --danger:#dc2626; --ok:#16a34a; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  header { background:var(--accent); color:#fff; padding:12px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; flex:1; }
+  nav button { background:transparent; color:#fff; border:1px solid #fff6; border-radius:6px; padding:6px 10px; cursor:pointer; }
+  nav button.active { background:#fff; color:var(--accent); }
+  main { padding:16px; max-width:1200px; margin:auto; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+  label { display:flex; flex-direction:column; font-size:13px; color:var(--muted); gap:4px; }
+  input, select { padding:7px; border:1px solid var(--line); border-radius:6px; font-size:14px; }
+  button.primary { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; }
+  button.link { background:none; border:0; color:var(--danger); cursor:pointer; }
+  .msg { margin-top:10px; font-size:14px; }
+  .msg.err { color:var(--danger); } .msg.ok { color:var(--ok); }
+  .grid-wrap { overflow-x:auto; }
+  table.grid { border-collapse:collapse; width:100%; min-width:600px; }
+  .grid th, .grid td { border:1px solid var(--line); padding:0; font-size:12px; vertical-align:top; }
+  .grid th { background:#eef2f7; padding:6px; position:sticky; top:0; }
+  .grid td.time { width:56px; text-align:center; color:var(--muted); padding:4px; }
+  .grid td.slot { height:28px; }
+  .block { background:#dbeafe; border-left:3px solid var(--accent); padding:3px 5px; height:100%; }
+  .block b { display:block; }
+  table.list { width:100%; border-collapse:collapse; font-size:14px; }
+  .list th, .list td { text-align:left; padding:6px; border-bottom:1px solid var(--line); }
+  .free { display:inline-block; background:#dcfce7; color:#166534; border-radius:12px; padding:2px 8px; margin:2px; font-size:12px; }
+  .hidden { display:none; }
+  .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
+  ul { padding-left:18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📅 Agenda de Aulas Particulares</h1>
+  <nav>
+    <button data-tab="agenda" class="active">Agenda do dia</button>
+    <button data-tab="novo">Novo agendamento</button>
+    <button data-tab="cadastros">Cadastros</button>
+  </nav>
+</header>
+
+<main>
+  <!-- AGENDA -->
+  <section id="tab-agenda">
+    <div class="card row">
+      <label>Dia <input type="date" id="dia"></label>
+      <label>Ver por
+        <select id="visao"><option value="sala">Sala</option><option value="professor">Professor</option></select>
+      </label>
+    </div>
+    <div class="card grid-wrap"><table class="grid" id="grade"></table></div>
+    <div class="card">
+      <h3 style="margin-top:0">Lista do dia</h3>
+      <table class="list" id="lista"></table>
+    </div>
+  </section>
+
+  <!-- NOVO -->
+  <section id="tab-novo" class="hidden">
+    <div class="card">
+      <div class="row">
+        <label>Data <input type="date" id="f-data"></label>
+        <label>Início <input type="time" id="f-inicio" step="1800" value="14:00"></label>
+        <label>Duração
+          <select id="f-dur"><option>30</option><option selected>60</option><option>90</option><option>120</option></select>
+        </label>
+        <label>Aluno <select id="f-aluno"></select></label>
+        <label>Professor <select id="f-prof"></select></label>
+        <label>Sala <select id="f-sala"></select></label>
+        <button class="primary" id="salvar">Agendar</button>
+      </div>
+      <div class="msg" id="msg"></div>
+      <p style="font-size:14px">Salas livres neste horário: <span id="livres"></span></p>
+      <p style="font-size:14px">Professores livres neste horário: <span id="profsLivres"></span></p>
+    </div>
+  </section>
+
+  <!-- CADASTROS -->
+  <section id="tab-cadastros" class="hidden">
+    <div class="cols">
+      <div class="card" data-entidade="professores"><h3>Professores</h3></div>
+      <div class="card" data-entidade="salas"><h3>Salas</h3></div>
+      <div class="card" data-entidade="alunos"><h3>Alunos</h3></div>
+    </div>
+  </section>
+</main>
+
+<script>
+// ---------- Dados ----------
+const hoje = new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso local
+const exemplo = {
+  professores: [{id:1,nome:"Ana (Matemática)"},{id:2,nome:"Bruno (Inglês)"},{id:3,nome:"Carla (Piano)"}],
+  salas: [{id:1,nome:"Sala 1"},{id:2,nome:"Sala 2"},{id:3,nome:"Sala 3"}],
+  alunos: [{id:1,nome:"João"},{id:2,nome:"Maria"},{id:3,nome:"Pedro"},{id:4,nome:"Luiza"}],
+  aulas: [
+    {id:1,data:hoje,inicio:"09:00",fim:"10:00",aluno:1,professor:1,sala:1},
+    {id:2,data:hoje,inicio:"09:00",fim:"10:00",aluno:2,professor:2,sala:2},
+    {id:3,data:hoje,inicio:"14:00",fim:"15:30",aluno:3,professor:3,sala:3},
+  ],
+};
+let db;
+try { db = JSON.parse(localStorage.getItem("agenda-db")) || exemplo; } catch { db = exemplo; }
+const salvarDb = () => { try { localStorage.setItem("agenda-db", JSON.stringify(db)); } catch {} };
+const novoId = lista => Math.max(0, ...lista.map(x => x.id)) + 1;
+const nome = (lista, id) => (db[lista].find(x => x.id === id) || {nome:"?"}).nome;
+
+// ---------- Horários ----------
+const min = h => { const [a, b] = h.split(":").map(Number); return a * 60 + b; };
+const hhmm = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+const ABRE = 7 * 60, FECHA = 22 * 60, PASSO = 30;
+// Dois horários se sobrepõem se um começa antes do outro terminar
+const sobrepoe = (a, b) => min(a.inicio) < min(b.fim) && min(b.inicio) < min(a.fim);
+
+function conflitos(nova) {
+  const erros = [];
+  db.aulas.filter(a => a.data === nova.data && sobrepoe(a, nova)).forEach(a => {
+    const quando = `${a.inicio}–${a.fim}`;
+    if (a.professor === nova.professor) erros.push(`Professor ${nome("professores", a.professor)} já tem aula ${quando}.`);
+    if (a.sala === nova.sala) erros.push(`${nome("salas", a.sala)} já está ocupada ${quando}.`);
+    if (a.aluno === nova.aluno) erros.push(`Aluno ${nome("alunos", a.aluno)} já tem aula ${quando}.`);
+  });
+  return erros;
+}
+
+// ---------- Abas ----------
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x === b));
+  document.querySelectorAll("main > section").forEach(s => s.classList.toggle("hidden", s.id !== "tab-" + b.dataset.tab));
+  renderTudo();
+});
+
+// ---------- Agenda ----------
+const $ = id => document.getElementById(id);
+$("dia").value = hoje; $("f-data").value = hoje;
+$("dia").onchange = $("visao").onchange = () => renderAgenda();
+
+function renderAgenda() {
+  const dia = $("dia").value, visao = $("visao").value;
+  const colunas = visao === "sala" ? db.salas : db.professores;
+  const aulas = db.aulas.filter(a => a.data === dia).sort((a, b) => min(a.inicio) - min(b.inicio));
+
+  let html = "<tr><th></th>" + colunas.map(c => `<th>${c.nome}</th>`).join("") + "</tr>";
+  const ocupado = {}; // células cobertas por rowspan
+  for (let t = ABRE; t < FECHA; t += PASSO) {
+    html += `<tr><td class="time">${t % 60 === 0 ? hhmm(t) : ""}</td>`;
+    colunas.forEach(c => {
+      const chave = c.id + "-" + t;
+      if (ocupado[chave]) return;
+      const aula = aulas.find(a => a[visao] === c.id && min(a.inicio) >= t && min(a.inicio) < t + PASSO);
+      if (aula) {
+        const span = Math.ceil((min(aula.fim) - t) / PASSO);
+        for (let k = 1; k < span; k++) ocupado[c.id + "-" + (t + k * PASSO)] = true;
+        const extra = visao === "sala" ? nome("professores", aula.professor) : nome("salas", aula.sala);
+        html += `<td class="slot" rowspan="${span}"><div class="block"><b>${nome("alunos", aula.aluno)}</b>${extra}<br>${aula.inicio}–${aula.fim}</div></td>`;
+      } else html += `<td class="slot"></td>`;
+    });
+    html += "</tr>";
+  }
+  $("grade").innerHTML = html;
+
+  $("lista").innerHTML = aulas.length
+    ? "<tr><th>Horário</th><th>Aluno</th><th>Professor</th><th>Sala</th><th></th></tr>" +
+      aulas.map(a => `<tr><td>${a.inicio}–${a.fim}</td><td>${nome("alunos", a.aluno)}</td><td>${nome("professores", a.professor)}</td><td>${nome("salas", a.sala)}</td><td><button class="link" data-cancelar="${a.id}">cancelar</button></td></tr>`).join("")
+    : "<tr><td>Nenhuma aula neste dia.</td></tr>";
+  document.querySelectorAll("[data-cancelar]").forEach(b => b.onclick = () => {
+    if (!confirm("Cancelar esta aula?")) return;
+    db.aulas = db.aulas.filter(a => a.id !== Number(b.dataset.cancelar)); salvarDb(); renderAgenda();
+  });
+}
+
+// ---------- Novo agendamento ----------
+const opcoes = lista => db[lista].map(x => `<option value="${x.id}">${x.nome}</option>`).join("");
+function lerForm() {
+  const inicio = $("f-inicio").value;
+  return { data: $("f-data").value, inicio, fim: hhmm(min(inicio) + Number($("f-dur").value)),
+           aluno: Number($("f-aluno").value), professor: Number($("f-prof").value), sala: Number($("f-sala").value) };
+}
+function renderLivres() {
+  if (!$("f-inicio").value) return;
+  const f = lerForm();
+  const doHorario = db.aulas.filter(a => a.data === f.data && sobrepoe(a, f));
+  const livre = (lista, campo) => db[lista].filter(x => !doHorario.some(a => a[campo] === x.id))
+    .map(x => `<span class="free">${x.nome}</span>`).join("") || "<em>nenhum(a)</em>";
+  $("livres").innerHTML = livre("salas", "sala");
+  $("profsLivres").innerHTML = livre("professores", "professor");
+}
+["f-data", "f-inicio", "f-dur"].forEach(id => $(id).onchange = renderLivres);
+
+$("salvar").onclick = () => {
+  const f = lerForm(), msg = $("msg");
+  if (!f.data || !f.inicio || !f.aluno || !f.professor || !f.sala) { msg.className = "msg err"; msg.textContent = "Preencha todos os campos."; return; }
+  if (min(f.fim) > FECHA) { msg.className = "msg err"; msg.textContent = "A aula termina depois do horário de funcionamento."; return; }
+  const erros = conflitos(f);
+  if (erros.length) { msg.className = "msg err"; msg.innerHTML = "⚠️ Não foi possível agendar:<br>" + erros.join("<br>"); return; }
+  db.aulas.push({ id: novoId(db.aulas), ...f }); salvarDb();
+  msg.className = "msg ok"; msg.textContent = `✅ Aula agendada: ${f.data} ${f.inicio}–${f.fim}.`;
+  renderLivres();
+};
+
+// ---------- Cadastros ----------
+function renderCadastros() {
+  document.querySelectorAll("[data-entidade]").forEach(card => {
+    const ent = card.dataset.entidade;
+    card.innerHTML = `<h3>${card.querySelector("h3").textContent}</h3>
+      <ul>${db[ent].map(x => `<li>${x.nome} <button class="link" data-del="${x.id}">remover</button></li>`).join("")}</ul>
+      <div class="row"><input placeholder="Nome"><button class="primary">Adicionar</button></div>`;
+    card.querySelector("button.primary").onclick = () => {
+      const inp = card.querySelector("input"), n = inp.value.trim();
+      if (!n) return;
+      db[ent].push({ id: novoId(db[ent]), nome: n }); salvarDb(); renderTudo();
+    };
+    card.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+      const id = Number(b.dataset.del), campo = {professores:"professor", salas:"sala", alunos:"aluno"}[ent];
+      if (db.aulas.some(a => a[campo] === id)) return alert("Existe aula agendada com este cadastro. Cancele as aulas antes.");
+      db[ent] = db[ent].filter(x => x.id !== id); salvarDb(); renderTudo();
+    });
+  });
+}
+
+function renderTudo() {
+  $("f-aluno").innerHTML = opcoes("alunos");
+  $("f-prof").innerHTML = opcoes("professores");
+  $("f-sala").innerHTML = opcoes("salas");
+  renderAgenda(); renderLivres(); renderCadastros();
+}
+renderTudo();
+</script>
+</body>
+</html>
