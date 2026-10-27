@@ -33,9 +33,10 @@ Professor 1 ──< Aula >── 1 Aluno
 3. **Sem conflito de aluno**: um aluno não pode estar em duas aulas ao mesmo tempo.
 4. Dois horários se sobrepõem quando `inicioA < fimB` **e** `inicioB < fimA`
    (uma aula que termina 10:00 e outra que começa 10:00 **não** conflitam).
-5. Aulas canceladas liberam professor e sala.
-6. Ao escolher data/horário, o sistema **sugere só as salas e professores livres**.
-7. (Futuro) Respeitar a disponibilidade cadastrada do professor e recursos da sala.
+5. **Duração mínima de 1h** por aula (opções: 1h, 1h30, 2h, 2h30, 3h).
+6. Aulas canceladas liberam professor e sala.
+7. Ao escolher data/horário, o sistema **sugere só as salas e professores livres**.
+8. (Futuro) Respeitar a disponibilidade cadastrada do professor e recursos da sala.
 
 ## 4. Telas
 
@@ -71,7 +72,8 @@ Já implementado no protótipo:
 
 ## 7. Perguntas em aberto
 
-- Duração padrão das aulas (30, 50, 60 min?) e horário de funcionamento.
+- ~~Duração das aulas~~ → definido: mínimo de 1h.
+- Horário de funcionamento (o protótipo usa 07h–22h).
 - Alguma aula precisa de sala com recurso específico (ex.: piano)?
 - Aulas em grupo (mais de um aluno) existem?
 - Quem vai usar: só a recepção, ou professores também?

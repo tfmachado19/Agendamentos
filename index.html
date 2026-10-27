@@ -71,7 +71,10 @@
         <label>Data <input type="date" id="f-data"></label>
         <label>Início <input type="time" id="f-inicio" step="1800" value="14:00"></label>
         <label>Duração
-          <select id="f-dur"><option>30</option><option selected>60</option><option>90</option><option>120</option></select>
+          <select id="f-dur">
+            <option value="60" selected>1h</option><option value="90">1h30</option><option value="120">2h</option>
+            <option value="150">2h30</option><option value="180">3h</option>
+          </select>
         </label>
         <label>Aluno <select id="f-aluno"></select></label>
         <label>Professor <select id="f-prof"></select></label>
@@ -117,6 +120,7 @@ const nome = (lista, id) => (db[lista].find(x => x.id === id) || {nome:"?"}).nom
 const min = h => { const [a, b] = h.split(":").map(Number); return a * 60 + b; };
 const hhmm = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
 const ABRE = 7 * 60, FECHA = 22 * 60, PASSO = 30;
+const DURACAO_MINIMA = 60; // aulas têm no mínimo 1h
 // Dois horários se sobrepõem se um começa antes do outro terminar
 const sobrepoe = (a, b) => min(a.inicio) < min(b.fim) && min(b.inicio) < min(a.fim);
 
@@ -198,6 +202,7 @@ function renderLivres() {
 $("salvar").onclick = () => {
   const f = lerForm(), msg = $("msg");
   if (!f.data || !f.inicio || !f.aluno || !f.professor || !f.sala) { msg.className = "msg err"; msg.textContent = "Preencha todos os campos."; return; }
+  if (min(f.fim) - min(f.inicio) < DURACAO_MINIMA) { msg.className = "msg err"; msg.textContent = "A aula deve ter no mínimo 1h."; return; }
   if (min(f.fim) > FECHA) { msg.className = "msg err"; msg.textContent = "A aula termina depois do horário de funcionamento."; return; }
   const erros = conflitos(f);
   if (erros.length) { msg.className = "msg err"; msg.innerHTML = "⚠️ Não foi possível agendar:<br>" + erros.join("<br>"); return; }
